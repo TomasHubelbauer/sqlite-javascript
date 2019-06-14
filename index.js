@@ -53,7 +53,7 @@ window.addEventListener('load', async () => {
   const varintBits = new Array(8 * 7 + 8);
 
   for (let pageNumber = 1; pageNumber < pageCount; pageNumber++) {
-    const pageDataView = new DataView(arrayBuffer, pageNumber * pageSize);
+    const pageDataView = new DataView(arrayBuffer, pageNumber * pageSize, pageSize);
     const pageType = pageDataView.getUint8(0);
     const firstFreeBlock = pageDataView.getUint16(1);
     const cellCount = pageDataView.getUint16(3);
@@ -90,16 +90,6 @@ window.addEventListener('load', async () => {
       }
       // http://forensicsfromthesausagefactory.blogspot.com/2011/05/analysis-of-record-structure-within.html
       case 0x0d: {
-        // Print this page for visual inspection
-        // for (let rowIndex = 0; rowIndex < pageSize / 16; rowIndex++) {
-        //   let line = (rowIndex * 16).toString(16);
-        //   for (let columnIndex = 0; columnIndex < 16; columnIndex++) {
-        //     line += ' ' + pageDataView.getUint8(rowIndex * 16 + columnIndex).toString(16);
-        //   }
-
-        //   console.log(line);
-        // }
-
         console.log(pageNumber, { firstFreeBlock, cellCount, cellContentArea, fragmentedFreeBytes });
 
         for (let cellPointerIndex = 0; cellPointerIndex < cellCount; cellPointerIndex++) {
@@ -321,13 +311,47 @@ window.addEventListener('load', async () => {
           }
         }
 
+        printDebugPage(pageDataView);
         break;
       }
       default: throw new Error('Invalid page type ' + pageType);
     }
 
-    if (pageNumber === 10 /* First 0x0d */) {
+    if (pageNumber === 4 /* First 0x0d */) {
       break;
     }
   }
 });
+
+function printDebugPage(/** @type{DataView} */ dataView) {
+  let line = '           |';
+
+  // Print the header row
+  for (let columnIndex = 0; columnIndex < 16; columnIndex++) {
+    const columnDec = columnIndex;
+    const columnHex = columnIndex.toString(16);
+    line += ` ${pad(columnHex, 2)} (${pad(columnDec, 3)})  `;
+  }
+
+  console.log(line);
+  console.log('-'.repeat(186))
+
+  // Print the data rows
+  for (let rowIndex = 0; rowIndex < dataView.byteLength / 16; rowIndex++) {
+    const rowDec = rowIndex * 16;
+    const rowHex = rowDec.toString(16);
+    line = `${pad(rowHex, 3)} (${pad(rowDec, 4)}) |`;
+
+    for (let columnIndex = 0; columnIndex < 16; columnIndex++) {
+      const dec = dataView.getUint8(rowIndex * 16 + columnIndex);
+      const hex = dec.toString(16);
+      line += ` ${pad(hex, 2)} (${pad(dec, 3)}) ${dec >= 32 && dec < 130 ? String.fromCharCode(dec) : ' '}`;
+    }
+
+    console.log(line);
+  }
+}
+
+function pad(value, length) {
+  return ' '.repeat(length - value.toString().length) + value.toString();
+}
