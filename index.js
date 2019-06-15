@@ -54,7 +54,6 @@ window.addEventListener('load', async () => {
 
   for (let pageNumber = 1; pageNumber < pageCount; pageNumber++) {
     const pageOffset = pageNumber * pageSize;
-    console.log('page', pageNumber, 'offset DEC', pageOffset, 'HEX', pageOffset.toString(16));
     const pageDataView = new DataView(arrayBuffer, pageOffset, pageSize);
     const pageType = pageDataView.getUint8(0);
     const firstFreeBlock = pageDataView.getUint16(1);
@@ -160,7 +159,7 @@ window.addEventListener('load', async () => {
           }
 
           const rowIdVariantBytes = varintByteIndex + 1;
-          console.log('rowid variant value', rowIdVarint, 'bytes', rowIdVariantBytes);
+          //console.log('rowid variant value', rowIdVarint, 'bytes', rowIdVariantBytes);
 
           // Read the payload header length
           varintByteIndex = 0;
@@ -234,33 +233,33 @@ window.addEventListener('load', async () => {
 
             // https://www.sqlite.org/datatype3.html
             if (serialTypeVarint === 0) {
-              console.log('serial type varint value NULL', 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value NULL', 'bytes', serialTypeVarintBytes);
             } else if (serialTypeVarint === 1) {
-              console.log('serial type varint value INT 8 bit / 1 byte', 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value INT 8 bit / 1 byte', 'bytes', serialTypeVarintBytes);
             } else if (serialTypeVarint === 2) {
-              console.log('serial type varint value INT 16 bit / 2 byte', 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value INT 16 bit / 2 byte', 'bytes', serialTypeVarintBytes);
             } else if (serialTypeVarint === 3) {
-              console.log('serial type varint value INT 24 bit / 3 byte', 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value INT 24 bit / 3 byte', 'bytes', serialTypeVarintBytes);
             } else if (serialTypeVarint === 4) {
-              console.log('serial type varint value INT 32 bit / 4 byte', 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value INT 32 bit / 4 byte', 'bytes', serialTypeVarintBytes);
             } else if (serialTypeVarint === 5) {
-              console.log('serial type varint value INT 48 bit / 6 byte', 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value INT 48 bit / 6 byte', 'bytes', serialTypeVarintBytes);
             } else if (serialTypeVarint === 6) {
-              console.log('serial type varint value INT 64 bit / 8 byte', 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value INT 64 bit / 8 byte', 'bytes', serialTypeVarintBytes);
             } else if (serialTypeVarint === 7) {
-              console.log('serial type varint value REAL', 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value REAL', 'bytes', serialTypeVarintBytes);
             } else if (serialTypeVarint === 8) {
-              console.log('serial type varint value FALSE', 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value FALSE', 'bytes', serialTypeVarintBytes);
             } else if (serialTypeVarint === 9) {
-              console.log('serial type varint value TRUE', 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value TRUE', 'bytes', serialTypeVarintBytes);
             } else if (serialTypeVarint === 10) {
-              console.log('serial type varint value INTERNAL', 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value INTERNAL', 'bytes', serialTypeVarintBytes);
             } else if (serialTypeVarint === 11) {
-              console.log('serial type varint value INTERNAL', 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value INTERNAL', 'bytes', serialTypeVarintBytes);
             } else if (serialTypeVarint >= 12 && serialTypeVarint % 2 === 0) {
-              console.log('serial type varint value BLOB', (serialTypeVarint - 12) / 2, 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value BLOB', (serialTypeVarint - 12) / 2, 'bytes', serialTypeVarintBytes);
             } else if (serialTypeVarint >= 13 && serialTypeVarint % 2 === 1) {
-              console.log('serial type varint value TEXT', (serialTypeVarint - 13) / 2, 'bytes', serialTypeVarintBytes);
+              //console.log('serial type varint value TEXT', (serialTypeVarint - 13) / 2, 'bytes', serialTypeVarintBytes);
             } else {
               throw new Error('Unknown data type');
             }
@@ -270,33 +269,42 @@ window.addEventListener('load', async () => {
           const payloadOffset = cellPointer + lengthVariantBytes + rowIdVariantBytes + payloadHeaderLengthVariantBytes + serialTypesVariantsByteCount;
           const payloadDataView = new DataView(pageDataView.buffer, pageDataView.byteOffset + payloadOffset);
 
+          const payload = [];
+
           // Read the payload items
           let itemOffset = 0;
           for (const serialType of serialTypes) {
             if (serialType === 0) {
-              console.log('payload value NULL');
+              //console.log('payload value NULL');
+              payload.push(null);
             } else if (serialType === 1) {
-              console.log('payload value INT 8 bit / 1 byte', payloadDataView.getUint8(itemOffset));
+              //console.log('payload value INT 8 bit / 1 byte', payloadDataView.getUint8(itemOffset));
+              payload.push(payloadDataView.getUint8(itemOffset));
               itemOffset += 1;
             } else if (serialType === 2) {
-              console.log('payload value INT 16 bit / 2 byte', payloadDataView.getUint16(itemOffset));
+              //console.log('payload value INT 16 bit / 2 bytes', payloadDataView.getUint16(itemOffset));
+              payload.push(payloadDataView.getUint16(itemOffset));
               itemOffset += 2;
             } else if (serialType === 3) {
-              throw new Error('INT 24 bit not implemented');
+              //console.log('payload value INT 24 bit / 3 bytes', payloadDataView.getUint24(itemOffset));
+              payload.push(payloadDataView.getUint24(itemOffset));
               itemOffset += 3;
             } else if (serialType === 4) {
-              console.log('payload value INT 32 bit / 4 byte', payloadDataView.getUint32(itemOffset));
+              //console.log('payload value INT 32 bit / 4 bytes', payloadDataView.getUint32(itemOffset));
+              payload.push(payloadDataView.getUint32(itemOffset));
               itemOffset += 4;
             } else if (serialType === 5) {
               throw new Error('payload value INT 48 bit not implemented');
             } else if (serialType === 6) {
               throw new Error('payload value INT 64 bit not implemented');
             } else if (serialType === 7) {
-              throw new Error('payload value REAL not implemented');
+              //console.log('payload value REAL 64 bit / 8 bytes', payloadDataView.getFloat64(itemOffset));
+              payload.push(payloadDataView.getFloat64(itemOffset));
+              itemOffset += 4;
             } else if (serialType === 8) {
-              console.log('payload value FALSE');
+              //console.log('payload value FALSE');
             } else if (serialType === 9) {
-              console.log('payload value TRUE');
+              //console.log('payload value TRUE');
             } else if (serialType === 10) {
               throw new Error('Cannot access internal payload value');
             } else if (serialType === 11) {
@@ -307,12 +315,15 @@ window.addEventListener('load', async () => {
               const length = (serialType - 13) / 2;
               const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + length);
               const text = String.fromCharCode(...new Uint8Array(slice));
-              console.log('payload value TEXT', length, 'bytes', text);
+              //console.log('payload value TEXT', length, 'bytes', text);
               itemOffset += length;
+              payload.push(text);
             } else {
               throw new Error('Unknown data type - cannot happen');
             }
           }
+
+          console.log(rowIdVarint, payload);
         }
 
         //printDebugPage(pageDataView);
@@ -321,9 +332,8 @@ window.addEventListener('load', async () => {
       default: throw new Error('Invalid page type ' + pageType);
     }
 
-    if (pageNumber === 50) {
-      break;
-    }
+    // Give the browser some room to breathe
+    await new Promise(resolve => window.setTimeout(resolve, 0));
   }
 });
 
