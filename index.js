@@ -50,49 +50,20 @@ window.addEventListener('load', async () => {
 
   const sqliteVersion = dataView.getUint32(96); // https://www.sqlite.org/c3ref/c_source_id.html
 
-  const pages = [];
+  // TODO: Ensure the rest of the first page after the header are zero bytes
 
+  const pages = [];
   for (let pageNumber = 1; pageNumber < pageCount; pageNumber++) {
     console.log('Page', pageNumber);
-    const pageOffset = pageNumber * pageSize;
-    const pageDataView = new DataView(arrayBuffer, pageOffset, pageSize);
+    const pageDataView = new DataView(arrayBuffer, pageNumber * pageSize, pageSize);
     const pageType = pageDataView.getUint8(0);
-    const firstFreeBlock = pageDataView.getUint16(1);
-    const cellCount = pageDataView.getUint16(3);
-    const cellContentArea = pageDataView.getUint16(5);
-    const fragmentedFreeBytes = pageDataView.getUint8(7);
-
     switch (pageType) {
-      // interior index
-      case 0x02: {
-        const rightMostPointer = pageDataView.getUint32(8);
-        //console.log('interior index', firstFreeBlock, cellCount, cellContentArea, fragmentedFreeBytes, rightMostPointer);
-        for (let cellPointerIndex = 0; cellPointerIndex < cellCount; cellPointerIndex++) {
-          const cellPointer = pageDataView.getUint16(12 + cellPointerIndex * 2);
-          break;
-        }
-
-        break;
-      }
-
-      // interior table
-      case 0x05: {
-        const rightMostPointer = pageDataView.getUint32(8);
-        //console.log('interior table', firstFreeBlock, cellCount, cellContentArea, fragmentedFreeBytes, rightMostPointer);
-        for (let cellPointerIndex = 0; cellPointerIndex < cellCount; cellPointerIndex++) {
-          const cellPointer = pageDataView.getUint16(12 + cellPointerIndex * 2);
-        }
-
-        break;
-      }
-
+      case 0x2: printDebugPage(pageDataView); pages.push(new InteriorIndexPage(pageDataView)); break;
+      case 0x5: printDebugPage(pageDataView); pages.push(new InteriorTablePage(pageDataView)); break;
       case 0xa: printDebugPage(pageDataView); pages.push(new LeafIndexPage(pageDataView)); break;
       case 0xd: pages.push(new LeafTablePage(pageDataView)); break;
       default: throw new Error('Invalid page type ' + pageType);
     }
-
-    // Give the browser some room to breathe
-    await new Promise(resolve => window.setTimeout(resolve, 0));
 
     if (pageNumber === 22 /* First leaf index page */) {
       break;
@@ -113,7 +84,9 @@ function printDebugPage(/** @type{DataView} */ dataView) {
   }
 
   console.log(line);
-  console.log('-'.repeat(220))
+  console.log('-'.repeat(220));
+
+  let text = '';
 
   // Print the data rows
   for (let rowIndex = 0; rowIndex < dataView.byteLength / 16; rowIndex++) {
@@ -124,11 +97,18 @@ function printDebugPage(/** @type{DataView} */ dataView) {
     for (let columnIndex = 0; columnIndex < 16; columnIndex++) {
       const dec = dataView.getUint8(rowIndex * 16 + columnIndex);
       const hex = dec.toString(16);
-      line += ` ${pad(hex, 2)} (${pad(dec, 3)}) ${dec >= 32 && dec <= 126 ? '"' + String.fromCharCode(dec) + '"' : '   '}`;
+      const char = dec >= 32 && dec <= 126 ? String.fromCharCode(dec) : null;
+      if (char !== null) {
+        text += char;
+      }
+      line += ` ${pad(hex, 2)} (${pad(dec, 3)}) ${char !== null ? '"' + char + '"' : '   '}`;
     }
 
     console.log(line);
   }
+
+  // Print the readable text only:
+  console.log(text);
 }
 
 function pad(value, length) {

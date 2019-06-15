@@ -11,6 +11,14 @@ I am using the Chinook test database file which is a newer alternative to
 Northwind.
 
 - Continue with https://www.sqlite.org/fileformat.html#b_tree_pages leaf index and interior pages
+  - https://jvns.ca/blog/2014/09/27/how-does-sqlite-work-part-1-pages/
+  - https://jvns.ca/blog/2014/10/02/how-does-sqlite-work-part-2-btrees/
+  - https://sqlite.org/src/file/src/btree.c & https://www.sqlite.org/fileformat2.html
+  - https://www.sqlite.org/fileformat2.html
+- Read table names and column names from the master table (page 1).
+  It looks as though SQLite doesn't actually store schema information in the binary
+  contents of the page but instead stores a SQL string used to create each table.
+  We need to parse this string to learn what tables are available in the database.
 - Implement a UI similar to `printDebugPage` but for the whole file where the
   user can scroll through the grid of hex+dec+ascii triplet combinations (this
   could probably be done by sizing the container to be as tall as would be needed
