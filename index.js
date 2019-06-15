@@ -109,11 +109,11 @@ function printDebugPage(/** @type{DataView} */ dataView) {
   for (let columnIndex = 0; columnIndex < 16; columnIndex++) {
     const columnDec = columnIndex;
     const columnHex = columnIndex.toString(16);
-    line += ` ${pad(columnHex, 2)} (${pad(columnDec, 3)})  `;
+    line += ` ${pad(columnHex, 2)} (${pad(columnDec, 3)})    `;
   }
 
   console.log(line);
-  console.log('-'.repeat(186))
+  console.log('-'.repeat(220))
 
   // Print the data rows
   for (let rowIndex = 0; rowIndex < dataView.byteLength / 16; rowIndex++) {
@@ -124,7 +124,7 @@ function printDebugPage(/** @type{DataView} */ dataView) {
     for (let columnIndex = 0; columnIndex < 16; columnIndex++) {
       const dec = dataView.getUint8(rowIndex * 16 + columnIndex);
       const hex = dec.toString(16);
-      line += ` ${pad(hex, 2)} (${pad(dec, 3)}) ${dec >= 32 && dec < 130 ? String.fromCharCode(dec) : ' '}`;
+      line += ` ${pad(hex, 2)} (${pad(dec, 3)}) ${dec >= 32 && dec <= 126 ? '"' + String.fromCharCode(dec) + '"' : '   '}`;
     }
 
     console.log(line);
