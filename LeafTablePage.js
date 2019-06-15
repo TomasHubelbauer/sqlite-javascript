@@ -1,22 +1,22 @@
 class LeafTablePage {
   // // http://forensicsfromthesausagefactory.blogspot.com/2011/05/analysis-of-record-structure-within.html
-  constructor(/** @type{DataView} */ pageDataView) {
-    const pageType = pageDataView.getUint8(0);
-    if (pageType !== 0x0d) {
+  constructor(/** @type{DataView} */ dataView) {
+    this.pageType = dataView.getUint8(0);
+    if (this.pageType !== 0xd) {
       throw new Error('Not a leaf table page!');
     }
 
-    this.firstFreeBlock = pageDataView.getUint16(1);
-    this.cellCount = pageDataView.getUint16(3);
-    this.cellContentArea = pageDataView.getUint16(5);
-    this.fragmentedFreeBytes = pageDataView.getUint8(7);
+    this.firstFreeBlock = dataView.getUint16(1);
+    this.cellCount = dataView.getUint16(3);
+    this.cellContentArea = dataView.getUint16(5);
+    this.fragmentedFreeBytes = dataView.getUint8(7);
     this.cells = [];
     for (let cellPointerIndex = 0; cellPointerIndex < this.cellCount; cellPointerIndex++) {
-      const cellPointer = pageDataView.getUint16(8 + cellPointerIndex * 2);
+      const cellPointer = dataView.getUint16(8 + cellPointerIndex * 2);
 
-      const lengthVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellPointer, 9));
-      const rowIdVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellPointer + lengthVarint.byteLength, 9));
-      const payloadHeaderLengthVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellPointer + lengthVarint.byteLength + rowIdVarint.byteLength, 9));
+      const lengthVarint = new VarInt(new DataView(dataView.buffer, dataView.byteOffset + cellPointer, 9));
+      const rowIdVarint = new VarInt(new DataView(dataView.buffer, dataView.byteOffset + cellPointer + lengthVarint.byteLength, 9));
+      const payloadHeaderLengthVarint = new VarInt(new DataView(dataView.buffer, dataView.byteOffset + cellPointer + lengthVarint.byteLength + rowIdVarint.byteLength, 9));
 
       // This is the number of bytes which are occupied by varints denoting the various serial types (N)
       const serialTypesVariantsByteCount = payloadHeaderLengthVarint.value - payloadHeaderLengthVarint.byteLength;
@@ -25,7 +25,7 @@ class LeafTablePage {
       let serialTypeVarintByteOffset = 0;
       const serialTypes = [];
       while (serialTypeVarintByteOffset < serialTypesVariantsByteCount) {
-        const serialTypeVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellPointer + lengthVarint.byteLength + rowIdVarint.byteLength + payloadHeaderLengthVarint.byteLength + serialTypeVarintByteOffset, 9));
+        const serialTypeVarint = new VarInt(new DataView(dataView.buffer, dataView.byteOffset + cellPointer + lengthVarint.byteLength + rowIdVarint.byteLength + payloadHeaderLengthVarint.byteLength + serialTypeVarintByteOffset, 9));
         serialTypes.push(serialTypeVarint.value);
         serialTypeVarintByteOffset += serialTypeVarint.byteLength;
 
@@ -64,7 +64,7 @@ class LeafTablePage {
       }
 
       // Read payload items corresponding to the serial types
-      const payloadDataView = new DataView(pageDataView.buffer, pageDataView.byteOffset + cellPointer + lengthVarint.byteLength + rowIdVarint.byteLength + payloadHeaderLengthVarint.byteLength + serialTypesVariantsByteCount, lengthVarint.value - payloadHeaderLengthVarint.value);
+      const payloadDataView = new DataView(dataView.buffer, dataView.byteOffset + cellPointer + lengthVarint.byteLength + rowIdVarint.byteLength + payloadHeaderLengthVarint.byteLength + serialTypesVariantsByteCount, lengthVarint.value - payloadHeaderLengthVarint.value);
       const payload = [];
       let itemOffset = 0;
       for (const serialType of serialTypes) {

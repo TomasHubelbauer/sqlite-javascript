@@ -86,29 +86,15 @@ window.addEventListener('load', async () => {
         break;
       }
 
-      // leaf index
-      case 0x0a: {
-        //console.log('leaf index', firstFreeBlock, cellCount, cellContentArea, fragmentedFreeBytes);
-        for (let cellPointerIndex = 0; cellPointerIndex < cellCount; cellPointerIndex++) {
-          const cellPointer = pageDataView.getUint16(8 + cellPointerIndex * 2);
-        }
-
-        break;
-      }
-
-      // leaf table
-      case 0x0d: {
-        pages.push(new LeafTablePage(pageDataView));
-        //printDebugPage(pageDataView);
-        break;
-      }
+      case 0xa: printDebugPage(pageDataView); pages.push(new LeafIndexPage(pageDataView)); break;
+      case 0xd: pages.push(new LeafTablePage(pageDataView)); break;
       default: throw new Error('Invalid page type ' + pageType);
     }
 
     // Give the browser some room to breathe
     await new Promise(resolve => window.setTimeout(resolve, 0));
 
-    if (pageNumber > 50) {
+    if (pageNumber === 22 /* First leaf index page */) {
       break;
     }
   }

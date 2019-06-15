@@ -10,8 +10,7 @@ The SQLite format is documented at: https://www.sqlite.org/fileformat.html
 I am using the Chinook test database file which is a newer alternative to
 Northwind.
 
-- Refactor varint parsing in `LeafTablePage` to be generic
-- Continue with https://www.sqlite.org/fileformat.html#b_tree_pages
+- Continue with https://www.sqlite.org/fileformat.html#b_tree_pages leaf index and interior pages
 - Implement a UI similar to `printDebugPage` but for the whole file where the
   user can scroll through the grid of hex+dec+ascii triplet combinations (this
   could probably be done by sizing the container to be as tall as would be needed
