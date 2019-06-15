@@ -50,9 +50,10 @@ window.addEventListener('load', async () => {
 
   const sqliteVersion = dataView.getUint32(96); // https://www.sqlite.org/c3ref/c_source_id.html
 
-  const varintBits = new Array(8 * 7 + 8);
+  const pages = [];
 
   for (let pageNumber = 1; pageNumber < pageCount; pageNumber++) {
+    console.log('Page', pageNumber);
     const pageOffset = pageNumber * pageSize;
     const pageDataView = new DataView(arrayBuffer, pageOffset, pageSize);
     const pageType = pageDataView.getUint8(0);
@@ -62,6 +63,7 @@ window.addEventListener('load', async () => {
     const fragmentedFreeBytes = pageDataView.getUint8(7);
 
     switch (pageType) {
+      // interior index
       case 0x02: {
         const rightMostPointer = pageDataView.getUint32(8);
         //console.log('interior index', firstFreeBlock, cellCount, cellContentArea, fragmentedFreeBytes, rightMostPointer);
@@ -72,6 +74,8 @@ window.addEventListener('load', async () => {
 
         break;
       }
+
+      // interior table
       case 0x05: {
         const rightMostPointer = pageDataView.getUint32(8);
         //console.log('interior table', firstFreeBlock, cellCount, cellContentArea, fragmentedFreeBytes, rightMostPointer);
@@ -81,6 +85,8 @@ window.addEventListener('load', async () => {
 
         break;
       }
+
+      // leaf index
       case 0x0a: {
         //console.log('leaf index', firstFreeBlock, cellCount, cellContentArea, fragmentedFreeBytes);
         for (let cellPointerIndex = 0; cellPointerIndex < cellCount; cellPointerIndex++) {
@@ -89,243 +95,10 @@ window.addEventListener('load', async () => {
 
         break;
       }
-      // http://forensicsfromthesausagefactory.blogspot.com/2011/05/analysis-of-record-structure-within.html
+
+      // leaf table
       case 0x0d: {
-        //console.log(pageNumber, { firstFreeBlock, cellCount, cellContentArea, fragmentedFreeBytes });
-
-        for (let cellPointerIndex = 0; cellPointerIndex < cellCount; cellPointerIndex++) {
-          const cellPointer = pageDataView.getUint16(8 + cellPointerIndex * 2);
-          //console.log(`page #${pageNumber} cell pointer #${cellPointerIndex} ${cellPointer} 0x${cellPointer.toString(16)}`);
-
-          // Read the payload header and the payload combined length
-          let varintByteIndex = 0;
-          let varintBitIndex = 0;
-          let varintByte;
-          while (varintByteIndex < 9) {
-            varintByte = pageDataView.getUint8(cellPointer + varintByteIndex);
-            //console.log(`page #${pageNumber} cell #${cellPointerIndex} at ${cellPointer} (0x${cellPointer.toString(16)}) length varint byte #${varintByteIndex} ${varintByte} (0x${varintByte.toString(16)})`);
-            for (let byteBitIndex = varintByteIndex === 8 ? 0 : 1; byteBitIndex < 8; byteBitIndex++) {
-              const set = (varintByte & (1 << (7 - byteBitIndex))) !== 0;
-              //console.log(`page #${pageNumber} cell #${cellPointerIndex} at ${cellPointer} (0x${cellPointer.toString(16)}) length varint byte #${varintByteIndex} ${varintByte} (0x${varintByte.toString(16)}) bit #${byteBitIndex} (#${varintBitIndex} in varint) ${set ? 'set' : 'unset'}`);
-              varintBits[varintBitIndex] = set;
-              varintBitIndex++;
-            }
-
-            // Stop looking for more varint bytes since the current byte's MSB is zero
-            if (varintByteIndex < 8 && (varintByte & (1 << 7)) === 0) {
-              break;
-            }
-
-            varintByteIndex++;
-          }
-
-          // Note that this is the combined length of the payload header and the payload
-          let lengthVarint = 0;
-          for (let index = varintBits.indexOf(true) /* First set length bit */; index < varintBitIndex; index++) {
-            if (varintBits[index]) {
-              lengthVarint += Math.pow(2, varintBitIndex - index - 1);
-            }
-          }
-
-          const lengthVariantBytes = varintByteIndex + 1;
-          //console.log('length varint value', lengthVarint, 'bytes', lengthVariantBytes);
-
-          // Read the rowid (the key)
-          varintByteIndex = 0;
-          varintBitIndex = 0;
-          while (varintByteIndex < 9) {
-            varintByte = pageDataView.getUint8(cellPointer + varintByteIndex + lengthVariantBytes);
-            //console.log(`page #${pageNumber} cell #${cellPointerIndex} at ${cellPointer} (0x${cellPointer.toString(16)}) rowid varint byte #${varintByteIndex} ${varintByte} (0x${varintByte.toString(16)})`);
-            for (let byteBitIndex = varintByteIndex === 8 ? 0 : 1; byteBitIndex < 8; byteBitIndex++) {
-              const set = (varintByte & (1 << (7 - byteBitIndex))) !== 0;
-              //console.log(`page #${pageNumber} cell #${cellPointerIndex} at ${cellPointer} (0x${cellPointer.toString(16)}) rowid varint byte #${varintByteIndex} ${varintByte} (0x${varintByte.toString(16)}) bit #${byteBitIndex} (#${varintBitIndex} in varint) ${set ? 'set' : 'unset'}`);
-              varintBits[varintBitIndex] = set;
-              varintBitIndex++;
-            }
-
-            // Stop looking for more varint bytes since the current byte's MSB is zero
-            if (varintByteIndex < 8 && (varintByte & (1 << 7)) === 0) {
-              break;
-            }
-
-            varintByteIndex++;
-          }
-
-          let rowIdVarint = 0;
-          for (let index = varintBits.indexOf(true) /* First set rowid bit */; index < varintBitIndex; index++) {
-            if (varintBits[index]) {
-              rowIdVarint += Math.pow(2, varintBitIndex - index - 1);
-            }
-          }
-
-          const rowIdVariantBytes = varintByteIndex + 1;
-          //console.log('rowid variant value', rowIdVarint, 'bytes', rowIdVariantBytes);
-
-          // Read the payload header length
-          varintByteIndex = 0;
-          varintBitIndex = 0;
-          while (varintByteIndex < 9) {
-            varintByte = pageDataView.getUint8(cellPointer + varintByteIndex + lengthVariantBytes + rowIdVariantBytes);
-            //console.log(`page #${pageNumber} cell #${cellPointerIndex} at ${cellPointer} (0x${cellPointer.toString(16)}) payload header length varint byte #${varintByteIndex} ${varintByte} (0x${varintByte.toString(16)})`);
-            for (let byteBitIndex = varintByteIndex === 8 ? 0 : 1; byteBitIndex < 8; byteBitIndex++) {
-              const set = (varintByte & (1 << (7 - byteBitIndex))) !== 0;
-              //console.log(`page #${pageNumber} cell #${cellPointerIndex} at ${cellPointer} (0x${cellPointer.toString(16)}) payload header length varint byte #${varintByteIndex} ${varintByte} (0x${varintByte.toString(16)}) bit #${byteBitIndex} (#${varintBitIndex} in varint) ${set ? 'set' : 'unset'}`);
-              varintBits[varintBitIndex] = set;
-              varintBitIndex++;
-            }
-
-            // Stop looking for more varint bytes since the current byte's MSB is zero
-            if (varintByteIndex < 8 && (varintByte & (1 << 7)) === 0) {
-              break;
-            }
-
-            varintByteIndex++;
-          }
-
-          let payloadHeaderVarint = 0;
-          for (let index = varintBits.indexOf(true) /* First set payload header length bit */; index < varintBitIndex; index++) {
-            if (varintBits[index]) {
-              payloadHeaderVarint += Math.pow(2, varintBitIndex - index - 1);
-            }
-          }
-
-          const payloadHeaderLengthVariantBytes = varintByteIndex + 1;
-          //console.log('payload header variant value', payloadHeaderVarint, 'bytes', payloadHeaderLengthVariantBytes);
-
-          // This is the number of bytes which are occupied by varints denoting the various serial types (N)
-          const serialTypesVariantsByteCount = payloadHeaderVarint - payloadHeaderLengthVariantBytes;
-          const serialTypesVarintByteOffset = lengthVariantBytes + rowIdVariantBytes + payloadHeaderLengthVariantBytes;
-
-          // Read the serial type varints one by one
-          let serialTypeVarintByteOffset = 0;
-          const serialTypes = [];
-          while (serialTypeVarintByteOffset < serialTypesVariantsByteCount) {
-            varintByteIndex = 0;
-            varintBitIndex = 0;
-            while (varintByteIndex < 9) {
-              varintByte = pageDataView.getUint8(cellPointer + varintByteIndex + serialTypesVarintByteOffset + serialTypeVarintByteOffset);
-              //console.log(`page #${pageNumber} cell #${cellPointerIndex} at ${cellPointer} (0x${cellPointer.toString(16)}) serial type varint byte #${varintByteIndex} ${varintByte} (0x${varintByte.toString(16)})`);
-              for (let byteBitIndex = varintByteIndex === 8 ? 0 : 1; byteBitIndex < 8; byteBitIndex++) {
-                const set = (varintByte & (1 << (7 - byteBitIndex))) !== 0;
-                //console.log(`page #${pageNumber} cell #${cellPointerIndex} at ${cellPointer} (0x${cellPointer.toString(16)}) serial type varint byte #${varintByteIndex} ${varintByte} (0x${varintByte.toString(16)}) bit #${byteBitIndex} (#${varintBitIndex} in varint) ${set ? 'set' : 'unset'}`);
-                varintBits[varintBitIndex] = set;
-                varintBitIndex++;
-              }
-
-              // Stop looking for more varint bytes since the current byte's MSB is zero
-              if (varintByteIndex < 8 && (varintByte & (1 << 7)) === 0) {
-                break;
-              }
-
-              varintByteIndex++;
-            }
-
-            let serialTypeVarint = 0;
-            for (let index = varintBits.indexOf(true) /* First set payload header length bit */; index < varintBitIndex; index++) {
-              if (varintBits[index]) {
-                serialTypeVarint += Math.pow(2, varintBitIndex - index - 1);
-              }
-            }
-
-            serialTypes.push(serialTypeVarint);
-            const serialTypeVarintBytes = varintByteIndex + 1;
-            serialTypeVarintByteOffset += serialTypeVarintBytes;
-
-            // https://www.sqlite.org/datatype3.html
-            if (serialTypeVarint === 0) {
-              //console.log('serial type varint value NULL', 'bytes', serialTypeVarintBytes);
-            } else if (serialTypeVarint === 1) {
-              //console.log('serial type varint value INT 8 bit / 1 byte', 'bytes', serialTypeVarintBytes);
-            } else if (serialTypeVarint === 2) {
-              //console.log('serial type varint value INT 16 bit / 2 byte', 'bytes', serialTypeVarintBytes);
-            } else if (serialTypeVarint === 3) {
-              //console.log('serial type varint value INT 24 bit / 3 byte', 'bytes', serialTypeVarintBytes);
-            } else if (serialTypeVarint === 4) {
-              //console.log('serial type varint value INT 32 bit / 4 byte', 'bytes', serialTypeVarintBytes);
-            } else if (serialTypeVarint === 5) {
-              //console.log('serial type varint value INT 48 bit / 6 byte', 'bytes', serialTypeVarintBytes);
-            } else if (serialTypeVarint === 6) {
-              //console.log('serial type varint value INT 64 bit / 8 byte', 'bytes', serialTypeVarintBytes);
-            } else if (serialTypeVarint === 7) {
-              //console.log('serial type varint value REAL', 'bytes', serialTypeVarintBytes);
-            } else if (serialTypeVarint === 8) {
-              //console.log('serial type varint value FALSE', 'bytes', serialTypeVarintBytes);
-            } else if (serialTypeVarint === 9) {
-              //console.log('serial type varint value TRUE', 'bytes', serialTypeVarintBytes);
-            } else if (serialTypeVarint === 10) {
-              //console.log('serial type varint value INTERNAL', 'bytes', serialTypeVarintBytes);
-            } else if (serialTypeVarint === 11) {
-              //console.log('serial type varint value INTERNAL', 'bytes', serialTypeVarintBytes);
-            } else if (serialTypeVarint >= 12 && serialTypeVarint % 2 === 0) {
-              //console.log('serial type varint value BLOB', (serialTypeVarint - 12) / 2, 'bytes', serialTypeVarintBytes);
-            } else if (serialTypeVarint >= 13 && serialTypeVarint % 2 === 1) {
-              //console.log('serial type varint value TEXT', (serialTypeVarint - 13) / 2, 'bytes', serialTypeVarintBytes);
-            } else {
-              throw new Error('Unknown data type');
-            }
-          }
-
-          // TODO: Put in the proper payload length
-          const payloadOffset = cellPointer + lengthVariantBytes + rowIdVariantBytes + payloadHeaderLengthVariantBytes + serialTypesVariantsByteCount;
-          const payloadDataView = new DataView(pageDataView.buffer, pageDataView.byteOffset + payloadOffset);
-
-          const payload = [];
-
-          // Read the payload items
-          let itemOffset = 0;
-          for (const serialType of serialTypes) {
-            if (serialType === 0) {
-              //console.log('payload value NULL');
-              payload.push(null);
-            } else if (serialType === 1) {
-              //console.log('payload value INT 8 bit / 1 byte', payloadDataView.getUint8(itemOffset));
-              payload.push(payloadDataView.getUint8(itemOffset));
-              itemOffset += 1;
-            } else if (serialType === 2) {
-              //console.log('payload value INT 16 bit / 2 bytes', payloadDataView.getUint16(itemOffset));
-              payload.push(payloadDataView.getUint16(itemOffset));
-              itemOffset += 2;
-            } else if (serialType === 3) {
-              //console.log('payload value INT 24 bit / 3 bytes', payloadDataView.getUint24(itemOffset));
-              payload.push(payloadDataView.getUint24(itemOffset));
-              itemOffset += 3;
-            } else if (serialType === 4) {
-              //console.log('payload value INT 32 bit / 4 bytes', payloadDataView.getUint32(itemOffset));
-              payload.push(payloadDataView.getUint32(itemOffset));
-              itemOffset += 4;
-            } else if (serialType === 5) {
-              throw new Error('payload value INT 48 bit not implemented');
-            } else if (serialType === 6) {
-              throw new Error('payload value INT 64 bit not implemented');
-            } else if (serialType === 7) {
-              //console.log('payload value REAL 64 bit / 8 bytes', payloadDataView.getFloat64(itemOffset));
-              payload.push(payloadDataView.getFloat64(itemOffset));
-              itemOffset += 4;
-            } else if (serialType === 8) {
-              //console.log('payload value FALSE');
-            } else if (serialType === 9) {
-              //console.log('payload value TRUE');
-            } else if (serialType === 10) {
-              throw new Error('Cannot access internal payload value');
-            } else if (serialType === 11) {
-              throw new Error('Cannot access internal payload value');
-            } else if (serialType >= 12 && serialType % 2 === 0) {
-              throw new Error('payload value BLOB not implemented');
-            } else if (serialType >= 13 && serialType % 2 === 1) {
-              const length = (serialType - 13) / 2;
-              const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + length);
-              const text = String.fromCharCode(...new Uint8Array(slice));
-              //console.log('payload value TEXT', length, 'bytes', text);
-              itemOffset += length;
-              payload.push(text);
-            } else {
-              throw new Error('Unknown data type - cannot happen');
-            }
-          }
-
-          console.log(rowIdVarint, payload);
-        }
-
+        pages.push(new LeafTablePage(pageDataView));
         //printDebugPage(pageDataView);
         break;
       }
@@ -334,7 +107,13 @@ window.addEventListener('load', async () => {
 
     // Give the browser some room to breathe
     await new Promise(resolve => window.setTimeout(resolve, 0));
+
+    if (pageNumber > 50) {
+      break;
+    }
   }
+
+  console.log('Done');
 });
 
 function printDebugPage(/** @type{DataView} */ dataView) {
