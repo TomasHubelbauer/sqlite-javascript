@@ -10,9 +10,12 @@ class InteriorTablePage {
     this.cellContentArea = dataView.getUint16(5);
     this.fragmentedFreeBytes = dataView.getUint8(7);
     this.rightMostPointer = dataView.getUint32(8);
+
     this.cells = [];
     for (let cellPointerIndex = 0; cellPointerIndex < this.cellCount; cellPointerIndex++) {
       const cellPointer = dataView.getUint16(12 + cellPointerIndex * 2);
+
+      console.log(dataView.byteOffset, cellPointer);
     }
   }
 }

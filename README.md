@@ -26,3 +26,5 @@ Northwind.
   offset from the scroll offset of the container - virtualized hex editor view)
   and each byte would be highlighted according to what it belongs to and would
   display additional information on hove
+- Find out what's up with the crash in one of the leaf tables where the cell pointer
+  is over a thousand
