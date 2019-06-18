@@ -49,9 +49,10 @@ class Sqlite {
     // TODO: Ensure the rest of the first page after the header are zero bytes
 
     this.pages = [];
-    for (let pageNumber = 1; pageNumber < (80 || this.pageCount); pageNumber++) {
-      const pageDataView = new DataView(dataView.buffer, pageNumber * this.pageSize, this.pageSize);
+    for (let pageIndex = 0; pageIndex < this.pageCount; pageIndex++) {
+      const pageDataView = new DataView(dataView.buffer, pageIndex * this.pageSize + (pageIndex === 0 ? 100 : 0), this.pageSize);
       const pageType = pageDataView.getUint8(0);
+      console.log('Page', pageIndex, 'type', pageType);
       switch (pageType) {
         case 0x2: this.pages.push(new InteriorIndexPage(pageDataView)); break;
         case 0x5: this.pages.push(new InteriorTablePage(pageDataView)); break;
