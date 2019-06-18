@@ -19,12 +19,9 @@ Northwind.
   It looks as though SQLite doesn't actually store schema information in the binary
   contents of the page but instead stores a SQL string used to create each table.
   We need to parse this string to learn what tables are available in the database.
-- Implement a UI similar to `printDebugPage` but for the whole file where the
-  user can scroll through the grid of hex+dec+ascii triplet combinations (this
-  could probably be done by sizing the container to be as tall as would be needed
-  for all the lines but displaying just the visible lines and calculating their
-  offset from the scroll offset of the container - virtualized hex editor view)
-  and each byte would be highlighted according to what it belongs to and would
-  display additional information on hove
 - Find out what's up with the crash in one of the leaf tables where the cell pointer
   is over a thousand
+- Use the HTML `DataView` component built in my other repository to implement a UI where the
+  user is able to switch between the database pages and view them in that component and each
+  byte has a title which describes its purpose and a background which highlights logical
+  chunks of the page
