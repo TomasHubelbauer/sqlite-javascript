@@ -21,7 +21,7 @@ Northwind.
   We need to parse this string to learn what tables are available in the database.
 - Find out what's up with the crash in one of the leaf tables where the cell pointer
   is over a thousand
-- Use the HTML `DataView` component built in my other repository to implement a UI where the
-  user is able to switch between the database pages and view them in that component and each
-  byte has a title which describes its purpose and a background which highlights logical
-  chunks of the page
+- Add a title which describes purpose and a background which highlights logical
+  group membership to each `DataViewBox` byte cell for visual debugging and
+  inspection of the database pages
+- Adjust the `DataViewBox` cell sizes to accomodate numbers of 3 digits

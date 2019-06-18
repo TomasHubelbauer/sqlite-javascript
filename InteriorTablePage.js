@@ -15,7 +15,7 @@ class InteriorTablePage {
     for (let cellPointerIndex = 0; cellPointerIndex < this.cellCount; cellPointerIndex++) {
       const cellPointer = dataView.getUint16(12 + cellPointerIndex * 2);
 
-      console.log(dataView.byteOffset, cellPointer);
+      //console.log(dataView.byteOffset, cellPointer);
     }
   }
 }

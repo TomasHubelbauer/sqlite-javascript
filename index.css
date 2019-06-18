@@ -1,0 +1,7 @@
+#pageDataViewBox {
+  box-sizing: border-box;
+  display: block;
+  height: 90vh;
+  overflow: auto;
+  white-space: nowrap;
+}
