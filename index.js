@@ -36,6 +36,7 @@ window.addEventListener('load', async () => {
     document.getElementById('pageDataViewBox').remove();
     const pageDataViewBox = document.createElement('th-dataviewbox');
     pageDataViewBox.id = 'pageDataViewBox';
+    pageDataViewBox.setAttribute('no-virtualization', 'yes');
     document.body.append(pageDataViewBox);
 
     document.getElementById('pageSpan').textContent = `${pageIndex + 1} / ${sqlite.pageCount}`;
