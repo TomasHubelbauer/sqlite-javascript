@@ -1,9 +1,12 @@
 window.addEventListener('load', async () => {
   const response = await fetch('Chinook_Sqlite.sqlite');
   const arrayBuffer = await response.arrayBuffer();
-  const dataView = new DataView(arrayBuffer);
+
+  // Demonstrate dynamic page loading by offering only the header and using the
+  // `slice` event, it would not be called if the whole `ArrayBuffer` was passed
+  const dataView = new DataView(arrayBuffer, 0, 100);
   const sqlite = new Sqlite(dataView);
-  //console.log(sqlite);
+  sqlite.addEventListener('slice', event => event.resolve(new DataView(arrayBuffer, event.pageOffset, event.pageSize)));
 
   customElements.define('th-dataviewbox', DataViewBox);
 
@@ -27,7 +30,9 @@ window.addEventListener('load', async () => {
     render();
   });
 
-  function render() {
+  async function render() {
+    document.getElementById('pageJsonPre').textContent = JSON.stringify(await sqlite.getPage(pageIndex));
+
     document.getElementById('pageDataViewBox').remove();
     const pageDataViewBox = document.createElement('th-dataviewbox');
     pageDataViewBox.id = 'pageDataViewBox';

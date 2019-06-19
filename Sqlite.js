@@ -1,5 +1,10 @@
-class Sqlite {
+class Sqlite extends EventTarget {
+  #dataView;
+
   constructor(/** @type{DataView} */ dataView) {
+    super();
+    this.#dataView = dataView;
+
     this.header = String.fromCharCode(...new Uint8Array(dataView.buffer).slice(0, 16));
     if (this.header !== 'SQLite format 3\0') {
       throw new Error('Invalid header');
@@ -46,31 +51,49 @@ class Sqlite {
 
     this.sqliteVersion = dataView.getUint32(96); // https://www.sqlite.org/c3ref/c_source_id.html
 
-    // TODO: Ensure the rest of the first page after the header are zero bytes
+    // TODO: Load the schema to find table and column names and types
+  }
 
-    this.pages = [];
-    for (let pageIndex = 0; pageIndex < this.pageCount; pageIndex++) {
-      const pageDataView = new DataView(dataView.buffer, pageIndex * this.pageSize + (pageIndex === 0 ? 100 : 0), this.pageSize);
-      const pageType = pageDataView.getUint8(0);
-      console.log('Page', pageIndex, 'type', pageType);
-      switch (pageType) {
-        case 0x2: this.pages.push(new InteriorIndexPage(pageDataView)); break;
-        case 0x5: this.pages.push(new InteriorTablePage(pageDataView)); break;
-        case 0xa: this.pages.push(new LeafIndexPage(pageDataView)); break;
-        case 0xd: this.pages.push(new LeafTablePage(pageDataView)); break;
-        default: throw new Error('Invalid page type ' + pageType);
-      }
+  async getPage(/** @type{Number} */ pageIndex) {
+    if (pageIndex < 0) {
+      throw new Error('Page index must be greated than or equal to zero');
     }
 
-    // Load the schema from the first page
-    const page1 = this.pages[1];
-    console.log(page1.pageType.toString(16), page1.rightMostPointer);
-    // const page2 = this.pages[page1.rightMostPointer + 1];
-    // console.log(page2);
+    if (pageIndex > this.pageCount - 1) {
+      throw new Error('Page index must less than the page count - 1');
+    }
 
-    console.log(page1.cells);
+    // Do not fetch the header bytes if this is the first page
+    const headerCarve = pageIndex === 0 ? 100 : 0;
+    const pageOffset = pageIndex * this.pageSize + headerCarve;
+    const pageSize = this.pageSize - headerCarve;
 
+    // Pull out the private field into a local variable to not break inference
+    /** @type{DataView} */ const dataView = this.#dataView;
+    let pageDataView;
+    if (dataView.byteLength >= pageOffset + this.pageSize) {
+      // Slice the existing `DataView` because it contains the range of this page
+      pageDataView = new DataView(dataView.buffer, pageOffset, pageSize);
+    } else {
+      // Ask the user to provide the required range on top of the initial `DataView`
+      pageDataView = await new Promise((resolve, reject) => {
+        // TODO: See about using custom event with the fields
+        const event = new Event('slice');
+        event.pageOffset = pageOffset;
+        event.pageSize = pageSize;
+        event.resolve = resolve;
+        event.reject = reject;
+        this.dispatchEvent(event);
+      });
+    }
 
-    // debugDataView(pageDataView); 
+    const pageType = pageDataView.getUint8(0);
+    switch (pageType) {
+      case 0x2: return new InteriorIndexPage(pageDataView);
+      case 0x5: return new InteriorTablePage(pageDataView);
+      case 0xa: return new LeafIndexPage(pageDataView);
+      case 0xd: return new LeafTablePage(pageDataView);
+      default: throw new Error('Invalid page type ' + pageType);
+    }
   }
 }

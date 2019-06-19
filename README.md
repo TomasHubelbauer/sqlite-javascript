@@ -10,6 +10,13 @@ The SQLite format is documented at: https://www.sqlite.org/fileformat.html
 I am using the Chinook test database file which is a newer alternative to
 Northwind.
 
+For info about `#` error, see https://github.com/TomasHubelbauer/js-private-members
+
+- Add a UI for entering a DB file URL or choosing a local file and load the DB
+  file per page od demand using the event if the server supports range requests
+  otherwise load it whole or warn if it is inaccessible due to CORS
+- Add a `pages` getter which returns an array proxy which does `getPage` on indexer access
+- See if custom event would be better than monkey patching a bare `Event`
 - Continue with https://www.sqlite.org/fileformat.html#b_tree_pages leaf index and interior pages
   - https://jvns.ca/blog/2014/09/27/how-does-sqlite-work-part-1-pages/
   - https://jvns.ca/blog/2014/10/02/how-does-sqlite-work-part-2-btrees/
