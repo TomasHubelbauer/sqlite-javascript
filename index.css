@@ -1,7 +1,21 @@
 #pageDataViewBox {
   box-sizing: border-box;
   display: block;
-  height: 90vh;
   overflow: auto;
   white-space: nowrap;
+}
+
+#headerDiv {
+  padding-left: 250px;
+}
+
+#headerDiv span {
+  display: inline-block;
+  width: 55.5px;
+}
+
+#labelDiv {
+  background: white;
+  position: sticky;
+  top: 0;
 }

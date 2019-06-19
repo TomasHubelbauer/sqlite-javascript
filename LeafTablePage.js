@@ -55,9 +55,9 @@ class LeafTablePage {
         } else if (serialTypeVarint.value === 11) {
           //console.log('serial type INTERNAL');
         } else if (serialTypeVarint.value >= 12 && serialTypeVarint.value % 2 === 0) {
-          //console.log('serial type BLOB', (serialTypeVarint - 12) / 2);
+          //console.log('serial type BLOB', (serialTypeVarint.value - 12) / 2);
         } else if (serialTypeVarint.value >= 13 && serialTypeVarint.value % 2 === 1) {
-          //console.log('serial type TEXT', (serialTypeVarint - 13) / 2);
+          //console.log('serial type TEXT', (serialTypeVarint.value - 13) / 2);
         } else {
           throw new Error('Unknown data type - cannot happen');
         }

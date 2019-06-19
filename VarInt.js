@@ -3,7 +3,7 @@
 const varintBits = new Array(8 * 7 + 8);
 
 class VarInt {
-  constructor(/** @type{ArrayBuffer} */ dataView) {
+  constructor(/** @type{DataView} */ dataView) {
     if (dataView.byteLength > 9) {
       console.trace();
       throw new Error('The var int data view length is too long, var int can be at most 9 bytes. Do not pass in longer data views as it could obscure an error.');

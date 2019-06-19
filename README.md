@@ -12,6 +12,9 @@ Northwind.
 
 For info about `#` error, see https://github.com/TomasHubelbauer/js-private-members
 
+- Make colors stable across byte type in the visual analyzer
+- Read payload item values to the title in the visual analyzer
+- Remember the last page in the visual analyzer
 - Add a UI for entering a DB file URL or choosing a local file and load the DB
   file per page od demand using the event if the server supports range requests
   otherwise load it whole or warn if it is inaccessible due to CORS
