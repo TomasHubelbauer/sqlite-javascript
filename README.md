@@ -10,9 +10,11 @@ The SQLite format is documented at: https://www.sqlite.org/fileformat.html
 I am using the Chinook test database file which is a newer alternative to
 Northwind.
 
-- Make colors stable across byte type in the visual analyzer
-- Read payload item values to the title in the visual analyzer
-- Remember the last page in the visual analyzer
+- Add a view where a visual representation of the pages forming the tree is shown
+- Make the highlights layered:
+  - Make the header all one color until hovered when the individual things are highlighted
+  - Make the cell chunk all one color until hovered
+  - …
 - Add a UI for entering a DB file URL or choosing a local file and load the DB
   file per page od demand using the event if the server supports range requests
   otherwise load it whole or warn if it is inaccessible due to CORS

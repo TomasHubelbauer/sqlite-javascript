@@ -10,7 +10,7 @@ window.addEventListener('load', async () => {
 
   customElements.define('th-dataviewbox', DataViewBox);
 
-  let pageIndex = 0;
+  let pageIndex = Number(localStorage['page-index'] || '0');
 
   document.getElementById('prevButton').addEventListener('click', () => {
     if (pageIndex === 0) {
@@ -31,6 +31,8 @@ window.addEventListener('load', async () => {
   });
 
   async function render() {
+    localStorage.setItem('page-index', pageIndex);
+
     document.getElementById('pageJsonPre').textContent = JSON.stringify(await sqlite.getPage(pageIndex));
 
     document.getElementById('pageDataViewBox').remove();
@@ -42,197 +44,267 @@ window.addEventListener('load', async () => {
     document.getElementById('pageSpan').textContent = `${pageIndex + 1} / ${sqlite.pageCount}`;
 
     const dataView = new DataView(arrayBuffer, pageIndex * sqlite.pageSize, sqlite.pageSize);
-    const labels = [...parsePage(dataView, pageIndex)];
+    const details = [...parsePage(dataView, pageIndex)];
 
     pageDataViewBox.styleSrc = 'https://tomashubelbauer.github.io/html-data-view-box/DataViewBox.css';
-    pageDataViewBox.labels = labels;
-    pageDataViewBox.addEventListener('hover', event => document.getElementById('labelDiv').textContent = `${event.relativeOffset}/${event.absoluteOffset}: ${event.title}`);
+    pageDataViewBox.details = details;
     pageDataViewBox.dataView = dataView;
+
+    pageDataViewBox.addEventListener('hover', event => {
+      document.title = event.relativeOffset + '/' + event.absoluteOffset;
+      document.getElementById('detailsDiv').textContent = event.relativeOffset + '/' + event.absoluteOffset;
+      document.getElementById('detailsDiv').style.background = 'none';
+
+      if (event.details) {
+        document.title += ': ' + event.details.title;
+        document.getElementById('detailsDiv').textContent += ': ' + event.details.title;
+        document.getElementById('detailsDiv').style.background = event.details.color;
+      }
+    });
   }
 
   render();
 });
 
-let colors = ['#cccccc', '#cccc99', '#cc99cc', '#cc9999', '#99cccc', '#99cc99', '#9999cc', '#999999'];
-let colorIndex = 0;
-function color() {
-  colorIndex = colorIndex === colors.length - 1 ? 0 : colorIndex + 1;
-  return colors[colorIndex] + ' ';
-}
+function* yieldString(/** @type {string} */ color, /** @type {string} */ string, /** @type {string} */ title, /** @type {DataView} */ dataView) {
+  if (dataView.byteLength !== string.length) {
+    throw new Error(`The string length ${string.length} does not match the data view length ${dataView.byteLength}`);
+  }
 
-function* yieldString(string, title) {
-  const clr = color();
   for (let index = 0; index < string.length; index++) {
-    yield clr + title + ` '${string}' character #${index}/${string.length}: '${string[index]}'`;
+    if (String.fromCharCode(dataView.getUint8(index)) !== string[index]) {
+      throw new Error('The strings do not match');
+    }
+
+    yield { color, title: `${title} '${string}' character ${index + 1}/${string.length}: '${string[index]}'` };
   }
 }
 
-function* yieldBlob(count, title) {
-  const clr = color();
+function* yieldBlob(/** @type {string} */ color, /** @type {number} */ count, /** @type {string} */ title, /** @type {DataView} */ dataView) {
+  if (dataView.byteLength !== count) {
+    throw new Error(`The blob length ${count} does not match the data view length ${dataView.byteLength}`);
+  }
+
   for (let index = 0; index < count; index++) {
-    yield clr + title + ` ${index}/${count}`;
+    yield { color, title: `${title} byte ${index + 1}/${count}` };
   }
 }
 
-function* yieldUint16(title) {
-  const clr = color();
-  yield clr + title + ' byte 1/2 (MSB) b1 * (16^2) + b2';
-  yield clr + title + ' byte 2/2 (LSB) b1 * (16^2) + b2';
+function* yieldU8(/** @type {string} */ color, /** @type {string} */ title, /** @type {DataView} */ dataView, /** @type {number?} */ constValue, specialValues, defaultValue) {
+  if (dataView.byteLength !== 1) {
+    throw new Error(`The data view length ${dataView.byteLength} is not 1 bytes of u8`);
+  }
+
+  const value = dataView.getUint8(0);
+  if (constValue && value !== constValue) {
+    throw new Error(`The value ${value} does not match the excepted value ${constValue}`);
+  }
+
+  title = `${title} (${constValue ? 'always ' : ''}${value} [${value.toString(16)}]${specialValues && specialValues[value] ? ': ' + specialValues[value] : defaultValue || ''})`;
+  yield { color, title };
 }
 
-function* yieldUint32(title) {
-  const clr = color();
-  yield clr + title + ' byte 1/4 (MSB) b1 * (16^4) + b2 * (16^3) + b3 * (16^2) + b4';
-  yield clr + title + ' byte 2/4 b1 * (16^4) + b2 * (16^3) + b3 * (16^2) + b4';
-  yield clr + title + ' byte 3/4 b1 * (16^4) + b2 * (16^3) + b3 * (16^2) + b4';
-  yield clr + title + ' byte 4/4 (LSB) b1 * (16^4) + b2 * (16^3) + b3 * (16^2) + b4';
+function* yieldU16(/** @type {string} */ color, /** @type {string} */ title, /** @type {DataView} */ dataView, /** @type {number?} */ constValue, specialValues, defaultValue) {
+  if (dataView.byteLength !== 2) {
+    throw new Error(`The data view length ${dataView.byteLength} is not 2 bytes of u16`);
+  }
+
+  const value = dataView.getUint16(0);
+  if (constValue && value !== constValue) {
+    throw new Error(`The value ${value} does not match the excepted value ${constValue}`);
+  }
+
+  title = `${title} (${value} [${value.toString(16)}]${specialValues && specialValues[value] ? ': ' + specialValues[value] : defaultValue || ''})`;
+  yield { color, title: title + ' BE byte 1/2 (MSB)' };
+  yield { color, title: title + ' BE byte 2/2 (LSB)' };
+}
+
+function* yieldU32(/** @type {string} */ color, /** @type {string} */ title, /** @type {DataView} */ dataView, /** @type {number?} */ constValue, specialValues, defaultValue) {
+  if (dataView.byteLength !== 4) {
+    throw new Error(`The data view length ${dataView.byteLength} is not 4 bytes of u32`);
+  }
+
+  const value = dataView.getUint32(0);
+  if (constValue && value !== constValue) {
+    throw new Error(`The value ${value} does not match the excepted value ${constValue}`);
+  }
+
+  title = `${title} (${value} [${value.toString(16)}]${specialValues && specialValues[value] ? ': ' + specialValues[value] : defaultValue || ''})`;
+  yield { color, title: title + ' BE byte 1/4 (MSB)' };
+  yield { color, title: title + ' BE byte 2/4' };
+  yield { color, title: title + ' BE byte 3/4' };
+  yield { color, title: title + ' BE byte 4/4 (LSB)' };
 }
 
 // This is different from the Sqlite class because it doesn't parse into structures, it just annotates bytes
+// The colors are from https://www.schemecolor.com/rainbow-pastels-color-scheme.php
+// https://www.sqlite.org/fileformat2.html
 function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ pageIndex) {
-  // Parse the SQLite header
+  let buffer = pageDataView.buffer;
+  let offset = pageDataView.byteOffset;
   if (pageIndex === 0) {
-    yield* yieldString('SQLite format 3\0', 'SQLite header');
-    yield* yieldUint16('Page size');
-    yield color() + `Write version`;
-    yield color() + `Read version`;
-    yield color() + `Unused bytes`;
-    yield color() + `Maximum embedded payload fraction (always 64)`;
-    yield color() + `Minimum embedded payload fraction (always 32)`;
-    yield color() + `Leaf payload fraction (always 32)`;
-    yield* yieldUint32('File change counter');
-    yield* yieldUint32('Database size');
-    yield* yieldUint32('Page number of the first freelist trunk page');
-    yield* yieldUint32('Total number of freelist pages');
-    yield* yieldUint32('The schema cookie');
-    yield* yieldUint32('The schema format number');
-    yield* yieldUint32('Default page cache size');
-    yield* yieldUint32('The page number of the largest root b-tree page when in auto-vacuum or incremental-vacuum modes, or zero otherwise');
-    yield* yieldUint32('The database text encoding. A value of 1 means UTF-8. A value of 2 means UTF-16le. A value of 3 means UTF-16be.');
-    yield* yieldUint32('The user version as read and set by the user_version pragma.');
-    yield* yieldUint32('True (non-zero) for incremental-vacuum mode. False (zero) otherwise.');
-    yield* yieldUint32('The "Application ID" set by PRAGMA application_id.');
-    yield* yieldBlob(20, 'Reserved for expansion. Must be zero.');
-    yield* yieldUint32('The version-valid-for number.');
-    yield* yieldUint32('SQLITE_VERSION_NUMBER');
+    yield* yieldString('#C7CEEA', 'SQLite format 3\0', 'SQLite header', new DataView(buffer, offset, 16));
+    yield* yieldU16('#B5EAD7', 'Page size', new DataView(buffer, offset += 16, 2));
+    yield* yieldU8('#E2F0CB', 'Write version', new DataView(buffer, offset += 2, 1));
+    yield* yieldU8('#FFDAC1', 'Read version', new DataView(buffer, offset += 1, 1));
+    yield* yieldU8('#FFB7B2', 'Unused bytes', new DataView(buffer, offset += 1, 1));
+    yield* yieldU8('#FF9AA2', 'Maximum embedded payload fraction', new DataView(buffer, offset += 1, 1), 64);
+    yield* yieldU8('#C7CEEA', 'Minimum embedded payload fraction', new DataView(buffer, offset += 1, 1), 32);
+    yield* yieldU8('#B5EAD7', 'Leaf payload fraction', new DataView(buffer, offset += 1, 1), 32);
+    yield* yieldU32('#E2F0CB', 'File change counter', new DataView(buffer, offset += 1, 4));
+    yield* yieldU32('#FFDAC1', 'Database size', new DataView(buffer, offset += 4, 4));
+    yield* yieldU32('#FFB7B2', 'Page number of the first freelist trunk page', new DataView(buffer, offset += 4, 4));
+    yield* yieldU32('#FF9AA2', 'Total number of freelist pages', new DataView(buffer, offset += 4, 4));
+    yield* yieldU32('#C7CEEA', 'Schema cookie', new DataView(buffer, offset += 4, 4));
+    yield* yieldU32('#B5EAD7', 'Schema format number', new DataView(buffer, offset += 4, 4));
+    yield* yieldU32('#E2F0CB', 'Default page cache size', new DataView(buffer, offset += 4, 4));
+    yield* yieldU32('#FFDAC1', 'Page number of the largest root B-tree', new DataView(buffer, offset += 4, 4), undefined, { 0: 'Not in auto-vacuum or incremental mode' });
+    yield* yieldU32('#FFB7B2', 'Database text encoding', new DataView(buffer, offset += 4, 4), undefined, { 1: 'UTF-8', 2: 'UTF-16le', 3: 'UTF-16be' }, 'Invalid value');
+    yield* yieldU32('#FF9AA2', 'User version as read and set by the user_version pragma', new DataView(buffer, offset += 4, 4));
+    yield* yieldU32('#C7CEEA', 'Incremental-vacuum mode flag', new DataView(buffer, offset += 4, 4), undefined, { 0: 'Is not in incremental-vacuum mode' }, 'Is in incremental-vacuum mode');
+    yield* yieldU32('#B5EAD7', 'Application ID set by PRAGMA application_id', new DataView(buffer, offset += 4, 4));
+    yield* yieldBlob('#E2F0CB', 20, 'Reserved for expansion - must be zero', new DataView(buffer, offset += 4, 20));
+    yield* yieldU32('#FFDAC1', 'The version-valid-for number', new DataView(buffer, offset += 20, 4));
+    yield* yieldU32('#FFB7B2', 'SQLITE_VERSION_NUMBER', new DataView(buffer, offset += 4, 4));
+    offset += 4;
   }
 
-  const pageOffset = pageIndex === 0 ? 100 : 0;
+  yield* yieldU8('#FF9AA2', 'Page type', new DataView(buffer, offset, 1));
+  const pageType = pageDataView.getUint8(offset - pageDataView.byteOffset);
+  yield* yieldU16('#C7CEEA', 'Freeblocks start', new DataView(buffer, offset += 1, 2), undefined, { 0: 'No freeblocks' });
+  yield* yieldU16('#B5EAD7', 'Number of cells on the page', new DataView(buffer, offset += 2, 2));
+  const cellCount = pageDataView.getUint16(offset - pageDataView.byteOffset);
+  yield* yieldU16('#E2F0CB', 'Cell content area start', new DataView(buffer, offset += 2, 2), undefined, { 0: 'Start is at 65536' });
+  const cellContentArea = pageDataView.getUint16(offset - pageDataView.byteOffset);
+  yield* yieldU8('#FFDAC1', 'Number of fragmented free bytes within the cell content area', new DataView(buffer, offset += 2, 1));
+  offset += 1;
 
-  // Parse the page contents
-  yield color() + `Page type`;
-  yield* yieldUint16('Start of the first freeblock on the page, or zero if there are no freeblocks');
-  yield* yieldUint16('Number of cells on the page');
-  yield* yieldUint16('Start of the cell content area. A zero value for this integer is interpreted as 65536.');
-  yield color() + `Number of fragmented free bytes within the cell content area`;
-
-  const pageType = pageDataView.getUint8(pageOffset);
-  if (pageType === 0x2 || pageType === 0x5) {
-    yield* yieldUint32('The right-most pointer. This value appears in the header of interior b-tree pages only and is omitted from all other pages');
-  }
-
-  // Find out why the unallocated area (`zeroCount`) is off by 24 for interior pages and 20 for leaf pages in my calculations
   switch (pageType) {
+    case 0x2: {
+      yield* yieldU32('#FFB7B2', 'Right-most pointer', new DataView(buffer, offset, 4));
+      // TODO: Parse the rest of the page
+      break;
+    }
     // TODO: Parse the SQL schema stored in the unallocated area - how to tell when it starts and what the format is?
     case 0x5: {
-      const cellCount = pageDataView.getUint16(pageOffset + 3);
+      yield* yieldU32('#FFB7B2', 'Right-most pointer', new DataView(buffer, offset, 4));
+
       const cellOffsets = [];
       for (let index = 0; index < cellCount; index++) {
-        yield* yieldUint16(`Cell #${index}/${cellCount}`);
-        cellOffsets.push(pageDataView.getUint16(pageOffset + 12 /* page header */ + index * 2));
+        yield* yieldU16(index % 2 === 0 ? '#FF9AA2' : '#C7CEEA', `Cell pointer #${index + 1}/${cellCount}`, new DataView(buffer, offset += index === 0 ? 4 : 2, 2));
+        cellOffsets.push(pageDataView.getUint16(offset - pageDataView.byteOffset));
       }
+
+      offset += 2;
 
       cellOffsets.reverse();
 
-      const cellContentArea = pageDataView.getUint16(pageOffset + 5);
-      const zeroCount = cellContentArea - pageOffset + 12 - cellCount * 2 - 24 /* TODO: Find out why this? Cell contents length? */;
-      yield* yieldBlob(zeroCount, 'Unallocated area');
+      const zeroCount = cellContentArea - (offset - pageDataView.byteOffset);
+      yield* yieldBlob('#B5EAD7', zeroCount, 'Unallocated area', new DataView(buffer, offset, zeroCount));
+      offset += zeroCount;
 
+      let keyVarint;
       for (let index = 0; index < cellCount; index++) {
-        yield* yieldUint32('Page number left child pointer');
+        yield* yieldU32('#E2F0CB', `Page number left child pointer ${index + 1}/${cellCount}`, new DataView(buffer, offset, 4));
 
-        let varintLength = 0;
-        let set = false;
-        do {
-          let byte = pageDataView.getUint8(cellOffsets[index] + 4 + varintLength);
-          set = (byte & (1 << (7 - 0))) !== 0;
-          varintLength++;
-        } while (set);
+        keyVarint = new VarInt(new DataView(buffer, offset += 4, 9));
+        yield* yieldBlob('#FFDAC1', keyVarint.byteLength, `Key varint (${keyVarint.value})`, new DataView(buffer, offset, keyVarint.byteLength));
 
-        yield* yieldBlob(varintLength, 'Varint');
-
-        if (index < cellCount - 1 && cellOffsets[index] + 4 + varintLength !== cellOffsets[index + 1]) {
+        offset += keyVarint.byteLength;
+        if (index < cellCount - 1 && offset - pageDataView.byteOffset !== cellOffsets[index + 1]) {
           throw new Error('Varint leaked into the next cell');
         }
       }
 
       break;
     }
-
+    case 0xa: {
+      // TODO: Parse the page
+      break;
+    }
+    // TODO: Do the overflow list page number u32
     case 0xd: {
-      const cellCount = pageDataView.getUint16(pageOffset + 3);
       const cellOffsets = [];
       for (let index = 0; index < cellCount; index++) {
-        yield* yieldUint16(`Cell #${index}/${cellCount}`);
-        cellOffsets.push(pageDataView.getUint16(pageOffset + 8 /* page header */ + index * 2));
+        yield* yieldU16(index % 2 === 0 ? '#FF9AA2' : '#C7CEEA', `Cell pointer ${index + 1}/${cellCount}`, new DataView(buffer, offset += index === 0 ? 0 : 2, 2));
+        cellOffsets.push(pageDataView.getUint16(offset - pageDataView.byteOffset));
       }
 
-      const cellContentArea = pageDataView.getUint16(pageOffset + 5);
-      const zeroCount = cellContentArea - pageOffset + 12 - cellCount * 2 - 20 /* TODO: Find out why this? Cell contents length? */;
-      yield* yieldBlob(zeroCount, 'Unallocated area');
+      offset += 2;
+
+      const zeroCount = cellContentArea - (offset - pageDataView.byteOffset);
+      yield* yieldBlob('#B5EAD7', zeroCount, 'Unallocated area', new DataView(buffer, offset, zeroCount));
+      offset += zeroCount;
 
       for (let index = 0; index < cellCount; index++) {
-        const payloadLengthVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellOffsets[index], 9));
-        yield* yieldBlob(payloadLengthVarint.byteLength, `Payload length varint (${payloadLengthVarint.value})`);
-        const rowidVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellOffsets[index] + payloadLengthVarint.byteLength, 9));
-        yield* yieldBlob(rowidVarint.byteLength, `rowid varint (${rowidVarint.value})`);
-        const serialTypesVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellOffsets[index] + payloadLengthVarint.byteLength + rowidVarint.byteLength, 9));
-        yield* yieldBlob(serialTypesVarint.byteLength, `serial types length varint (${serialTypesVarint.value})`);
+        const payloadLengthVarint = new VarInt(new DataView(buffer, offset, 9));
+        yield* yieldBlob('#E2F0CB', payloadLengthVarint.byteLength, `Payload length varint (${payloadLengthVarint.value})`, new DataView(buffer, offset, payloadLengthVarint.byteLength));
+
+        const rowidVarint = new VarInt(new DataView(buffer, offset += payloadLengthVarint.byteLength, 9));
+        yield* yieldBlob('#FFDAC1', rowidVarint.byteLength, `Row ID varint (${rowidVarint.value})`, new DataView(buffer, offset, rowidVarint.byteLength));
+
+        const serialTypesLengthVarint = new VarInt(new DataView(buffer, offset += rowidVarint.byteLength, 9));
+        yield* yieldBlob('#FFB7B2', serialTypesLengthVarint.byteLength, `Serial types varint (${serialTypesLengthVarint.value})`, new DataView(buffer, offset, serialTypesLengthVarint.byteLength));
+        offset += serialTypesLengthVarint.byteLength;
 
         const serialTypeVarints = [];
-        while (serialTypeVarints.reduce((a, c) => a + c.byteLength, 0) < serialTypesVarint.value - serialTypesVarint.byteLength) {
-          const serialTypeVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellOffsets[index] + payloadLengthVarint.byteLength + rowidVarint.byteLength + serialTypesVarint.byteLength + serialTypeVarints.reduce((a, c) => a + c.byteLength, 0), 9));
+        const serialTypesEndOffset = offset + serialTypesLengthVarint.value - serialTypesLengthVarint.byteLength;
+
+        let color = '#FF9AA2';
+        while (offset < serialTypesEndOffset) {
+          const serialTypeVarint = new VarInt(new DataView(buffer, offset, 9));
           serialTypeVarints.push(serialTypeVarint);
+          offset += serialTypeVarint.byteLength;
 
           // https://www.sqlite.org/datatype3.html
+          let type = '';
           if (serialTypeVarint.value === 0) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type NULL varint (${serialTypeVarint.value})`);
+            type = 'NULL';
           } else if (serialTypeVarint.value === 1) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type u8 varint (${serialTypeVarint.value})`);
+            type = 'u8';
           } else if (serialTypeVarint.value === 2) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type u16 varint (${serialTypeVarint.value})`);
+            type = 'u16';
           } else if (serialTypeVarint.value === 3) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type u24 varint (${serialTypeVarint.value})`);
+            type = 'u24';
           } else if (serialTypeVarint.value === 4) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type u32 varint (${serialTypeVarint.value})`);
+            type = 'u32';
           } else if (serialTypeVarint.value === 5) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type u48 varint (${serialTypeVarint.value})`);
+            type = 'u48';
           } else if (serialTypeVarint.value === 6) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type u64 varint (${serialTypeVarint.value})`);
+            type = 'u64';
           } else if (serialTypeVarint.value === 7) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type REAL varint (${serialTypeVarint.value})`);
+            type = 'REAL';
           } else if (serialTypeVarint.value === 8) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type FALSE varint (${serialTypeVarint.value})`);
+            type = 'FALSE';
           } else if (serialTypeVarint.value === 9) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type TRUE varint (${serialTypeVarint.value})`);
+            type = 'TRUE';
           } else if (serialTypeVarint.value === 10) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type INTERNAL varint (${serialTypeVarint.value})`);
+            type = 'INTERNAL';
           } else if (serialTypeVarint.value === 11) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type INTERNAL varint (${serialTypeVarint.value})`);
+            type = 'INTERNAL';
           } else if (serialTypeVarint.value >= 12 && serialTypeVarint.value % 2 === 0) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type BLOB (${(serialTypeVarint.value - 12) / 2}) varint (${serialTypeVarint.value})`);
+            type = `BLOB (${(serialTypeVarint.value - 12) / 2})`;
           } else if (serialTypeVarint.value >= 13 && serialTypeVarint.value % 2 === 1) {
-            yield* yieldBlob(serialTypeVarint.byteLength, `serial type TEXT (${(serialTypeVarint.value - 13) / 2}) varint (${serialTypeVarint.value})`);
+            type = `TEXT (${(serialTypeVarint.value - 13) / 2})`;
           } else {
             throw new Error('Unknown data type - cannot happen');
           }
+
+          yield* yieldBlob(color, serialTypeVarint.byteLength, `serial type ${type} varint (${serialTypeVarint.value})`, new DataView(buffer, offset, serialTypeVarint.byteLength));
+          color = color === '#FF9AA2' ? '#C7CEEA' : '#FF9AA2';
         }
 
+        if (offset !== serialTypesEndOffset) {
+          throw new Error('Serial type varints leaked');
+        }
+
+        color = '#B5EAD7';
         for (const serialTypeVarint of serialTypeVarints) {
           if (serialTypeVarint.value === 0) {
             // NULL
           } else if (serialTypeVarint.value === 1) {
-            yield color() + `u8 payload item`;
+            yield* yieldU8(color, `u8 payload item`, new DataView(buffer, offset, 1));
+            offset += 1;
           } else if (serialTypeVarint.value === 2) {
             throw new Error('TODO');
           } else if (serialTypeVarint.value === 3) {
@@ -255,17 +327,23 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
             throw new Error('TODO');
           } else if (serialTypeVarint.value >= 12 && serialTypeVarint.value % 2 === 0) {
             const length = (serialTypeVarint.value - 12) / 2;
-            yield* yieldBlob(length, `BLOB (${length}) payload item`);
+            yield* yieldBlob(color, length, `TEXT (${length}) payload item`, new DataView(buffer, offset, length));
+            offset += length;
           } else if (serialTypeVarint.value >= 13 && serialTypeVarint.value % 2 === 1) {
             const length = (serialTypeVarint.value - 13) / 2;
-            yield* yieldBlob(length, `TEXT (${length}) payload item`);
+            const value = String.fromCharCode(...new Uint8Array(buffer.slice(offset, offset + length)));
+            yield* yieldString(color, value, `TEXT (${length}) payload item`, new DataView(buffer, offset, length));
+            offset += length;
           } else {
             throw new Error('Unknown data type - cannot happen');
           }
+
+          color = color === '#B5EAD7' ? '#E2F0CB' : '#B5EAD7';
         }
 
-        // TODO: Do the overflow list page number u32
-        // TODO: Add a check to ensure that the offset right here matches the next cell pointer if this is not the last cell
+        if (index < cellCount - 1 && offset - pageDataView.byteOffset !== cellOffsets[index + 1]) {
+          throw new Error('Varint leaked into the next cell');
+        }
       }
 
       break;
