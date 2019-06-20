@@ -10,6 +10,8 @@ The SQLite format is documented at: https://www.sqlite.org/fileformat.html
 I am using the Chinook test database file which is a newer alternative to
 Northwind.
 
+- Find out what's up with the crash in one of the leaf tables where the cell pointer
+  is over a thousand (page 9?)
 - Add a view where a visual representation of the pages forming the tree is shown
 - Make the highlights layered:
   - Make the header all one color until hovered when the individual things are highlighted
@@ -29,8 +31,6 @@ Northwind.
   It looks as though SQLite doesn't actually store schema information in the binary
   contents of the page but instead stores a SQL string used to create each table.
   We need to parse this string to learn what tables are available in the database.
-- Find out what's up with the crash in one of the leaf tables where the cell pointer
-  is over a thousand
 - Add a title which describes purpose and a background which highlights logical
   group membership to each `DataViewBox` byte cell for visual debugging and
   inspection of the database pages

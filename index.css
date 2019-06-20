@@ -14,8 +14,10 @@
   width: 55.5px;
 }
 
-#labelDiv {
+#detailsDiv {
   background: white;
+  overflow: hidden;
   position: sticky;
   top: 0;
+  white-space: nowrap;
 }
