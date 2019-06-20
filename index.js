@@ -230,6 +230,11 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
         cellOffsets.push(pageDataView.getUint16(offset - pageDataView.byteOffset));
       }
 
+      // TODO: Find out why this is only on certain pages and what's the real condition under which this happens
+      if (cellOffsets[0] > cellOffsets[cellOffsets.length - 1]) {
+        cellOffsets.reverse();
+      }
+
       offset += 2;
 
       const zeroCount = cellContentArea - (offset - pageDataView.byteOffset);
@@ -342,7 +347,7 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
         }
 
         if (index < cellCount - 1 && offset - pageDataView.byteOffset !== cellOffsets[index + 1]) {
-          throw new Error('Varint leaked into the next cell');
+          throw new Error(`Varint leaked into the next cell! Offset is ${offset} and the next cell offset is ${cellOffsets[index + 1]}`);
         }
       }
 

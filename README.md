@@ -10,8 +10,9 @@ The SQLite format is documented at: https://www.sqlite.org/fileformat.html
 I am using the Chinook test database file which is a newer alternative to
 Northwind.
 
-- Find out what's up with the crash in one of the leaf tables where the cell pointer
-  is over a thousand (page 9?)
+- Finalize page types 2 and 10 and run all pages through `parsePage` for errors
+- See what's up with the page #35 reporting a varint leak
+- Finalize the `TODO`s in `parsePage` in the serial type prints
 - Add a view where a visual representation of the pages forming the tree is shown
 - Make the highlights layered:
   - Make the header all one color until hovered when the individual things are highlighted
