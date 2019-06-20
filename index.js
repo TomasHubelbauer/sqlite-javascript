@@ -100,7 +100,7 @@ function* yieldU8(/** @type {string} */ color, /** @type {string} */ title, /** 
     throw new Error(`The value ${value} does not match the excepted value ${constValue}`);
   }
 
-  title = `${title} (${constValue ? 'always ' : ''}${value} [${value.toString(16)}]${specialValues && specialValues[value] ? ': ' + specialValues[value] : defaultValue || ''})`;
+  title = `${title} (${constValue !== undefined ? 'always ' : ''}${value} [${value.toString(16)}]${specialValues && specialValues[value] ? ': ' + specialValues[value] : defaultValue || ''})`;
   yield { color, title };
 }
 
@@ -114,7 +114,7 @@ function* yieldU16(/** @type {string} */ color, /** @type {string} */ title, /**
     throw new Error(`The value ${value} does not match the excepted value ${constValue}`);
   }
 
-  title = `${title} (${value} [${value.toString(16)}]${specialValues && specialValues[value] ? ': ' + specialValues[value] : defaultValue || ''})`;
+  title = `${title} (${constValue !== undefined ? 'always ' : ''}${value} [${value.toString(16)}]${specialValues && specialValues[value] ? ': ' + specialValues[value] : defaultValue || ''})`;
   yield { color, title: title + ' BE byte 1/2 (MSB)' };
   yield { color, title: title + ' BE byte 2/2 (LSB)' };
 }
@@ -129,7 +129,7 @@ function* yieldU32(/** @type {string} */ color, /** @type {string} */ title, /**
     throw new Error(`The value ${value} does not match the excepted value ${constValue}`);
   }
 
-  title = `${title} (${value} [${value.toString(16)}]${specialValues && specialValues[value] ? ': ' + specialValues[value] : defaultValue || ''})`;
+  title = `${title} (${constValue !== undefined ? 'always ' : ''}${value} [${value.toString(16)}]${specialValues && specialValues[value] ? ': ' + specialValues[value] : defaultValue || ''})`;
   yield { color, title: title + ' BE byte 1/4 (MSB)' };
   yield { color, title: title + ' BE byte 2/4' };
   yield { color, title: title + ' BE byte 3/4' };
@@ -281,6 +281,170 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
             color = color === '#B5EAD7' ? '#E2F0CB' : '#B5EAD7';
           }
         }
+      } else if (pageIndex === 1) {
+        yield* yieldBlob('white', 64, 'TODO', new DataView(buffer, offset, 64));
+        offset += 64;
+
+        for (let index = 0; index < 32; index++) {
+          yield* yieldBlob('white', 2, 'Uknown', new DataView(buffer, offset, 2));
+          const unknowns = new Uint8Array(buffer, offset, 2);
+          offset += 2;
+
+          yield* yieldU8('#E2F0CB', 'Some ID (varint?)', new DataView(buffer, offset, 1));
+          const id = new DataView(buffer, offset, 1).getUint8();
+          offset += 1;
+
+          yield* yieldU8('#FF9AA2', 'Number 4 - some kind of a type thingy?', new DataView(buffer, offset, 1), 4);
+          offset += 1;
+
+          yield* yieldU8('#FFB7B2', 'Zero', new DataView(buffer, offset, 1), 0);
+          offset += 1;
+
+          yield* yieldU8('#FFDAC1', 'Length', new DataView(buffer, offset, 1));
+          const length = (((new DataView(buffer, offset, 1).getUint8())) - 13) / 2;
+          offset += 1;
+
+          yield* yieldU8('#E2F0CB', 'One / 9', new DataView(buffer, offset, 1));
+          offset += 1;
+
+          const text = String.fromCharCode(...new Uint8Array(buffer, offset, length));
+          yield* yieldString('#C7CEEA', text, 'Payload', new DataView(buffer, offset, length));
+          console.log(unknowns, id, text);
+          offset += length;
+        }
+
+        const zeroCount = cellContentArea - (offset - pageDataView.byteOffset);
+        console.log(zeroCount);
+        yield* yieldBlob('#777777', zeroCount, 'TODO', new DataView(buffer, offset, zeroCount));
+        offset += zeroCount;
+      } else if (pageIndex === 2) {
+        yield* yieldBlob('white', 112, 'TODO', new DataView(buffer, offset, 112));
+        offset += 112;
+
+        // Note that the 45th entry is Alanis Morisette and it's overflown
+        for (let index = 0; index < 44; index++) {
+          yield* yieldBlob('white', 1, 'Uknown', new DataView(buffer, offset, 1));
+          const unknowns = new Uint8Array(buffer, offset, 1);
+          offset += 1;
+
+          yield* yieldU8('#E2F0CB', 'Some ID (varint?)', new DataView(buffer, offset, 1));
+          const id = new DataView(buffer, offset, 1).getUint8();
+          offset += 1;
+
+          yield* yieldU8('#FF9AA2', 'Number 3 - some kind of a type thingy?', new DataView(buffer, offset, 1), 3);
+          offset += 1;
+
+          yield* yieldU8('#FFB7B2', 'Zero', new DataView(buffer, offset, 1), 0);
+          offset += 1;
+
+          yield* yieldU8('#FFDAC1', 'Length', new DataView(buffer, offset, 1));
+          const length = (((new DataView(buffer, offset, 1).getUint8())) - 13) / 2;
+          offset += 1;
+
+          const text = String.fromCharCode(...new Uint8Array(buffer, offset, length));
+          yield* yieldString('#C7CEEA', text, 'Payload', new DataView(buffer, offset, length));
+          console.log(unknowns, id, text);
+          offset += length;
+        }
+
+        const zeroCount = cellContentArea - (offset - pageDataView.byteOffset);
+        yield* yieldBlob('#B5EAD7', zeroCount, 'Unallocated area', new DataView(buffer, offset, zeroCount));
+        offset += zeroCount;
+      } else if (pageIndex === 3) {
+        yield* yieldBlob('white', 5, 'TODO', new DataView(buffer, offset, 5));
+        offset += 5;
+
+        for (index = 0; index < 3; index++) {
+          yield* yieldBlob('white', 4, 'Uknown', new DataView(buffer, offset, 4));
+          const unknowns = new Uint8Array(buffer, offset, 4);
+          offset += 4;
+
+          yield* yieldU8('#FFB7B2', 'Zero', new DataView(buffer, offset, 1), 0);
+          offset += 1;
+
+          yield* yieldU8('#FFDAC1', 'First name length', new DataView(buffer, offset, 1));
+          const firstNameLength = (((new DataView(buffer, offset, 1).getUint8())) - 13) / 2;
+          offset += 1;
+
+          yield* yieldU8('#E2F0CB', 'Last name length', new DataView(buffer, offset, 1));
+          const lastNameLength = (((new DataView(buffer, offset, 1).getUint8())) - 13) / 2;
+          offset += 1;
+
+          yield* yieldU8('#FFB7B2', 'Zero', new DataView(buffer, offset, 1), 0);
+          offset += 1;
+
+          yield* yieldU8('#FFDAC1', 'Street length', new DataView(buffer, offset, 1));
+          const streetLength = (((new DataView(buffer, offset, 1).getUint8())) - 13) / 2;
+          offset += 1;
+
+          yield* yieldU8('#E2F0CB', 'City length', new DataView(buffer, offset, 1));
+          const cityLength = (((new DataView(buffer, offset, 1).getUint8())) - 13) / 2;
+          offset += 1;
+
+          yield* yieldU8('#FFB7B2', 'Zero', new DataView(buffer, offset, 1), 0);
+          offset += 1;
+
+          yield* yieldU8('#E2F0CB', 'Country length', new DataView(buffer, offset, 1));
+          const countryLength = (((new DataView(buffer, offset, 1).getUint8())) - 13) / 2;
+          offset += 1;
+
+          yield* yieldU8('#FFDAC1', 'Zip length', new DataView(buffer, offset, 1));
+          const zipLength = (((new DataView(buffer, offset, 1).getUint8())) - 13) / 2;
+          offset += 1;
+
+          yield* yieldU8('#E2F0CB', 'Phone length', new DataView(buffer, offset, 1));
+          const phoneLength = (((new DataView(buffer, offset, 1).getUint8())) - 13) / 2;
+          offset += 1;
+
+          yield* yieldU8('#FFB7B2', 'Zero', new DataView(buffer, offset, 1), 0);
+          offset += 1;
+
+          yield* yieldU8('#E2F0CB', 'Email length', new DataView(buffer, offset, 1));
+          const emailLength = (((new DataView(buffer, offset, 1).getUint8())) - 13) / 2;
+          offset += 1;
+
+          yield* yieldBlob('white', 1, 'Uknown 4', new DataView(buffer, offset, 1));
+          const unknowns2 = new Uint8Array(buffer, offset, 1);
+          offset += 1;
+
+          const firstName = String.fromCharCode(...new Uint8Array(buffer, offset, firstNameLength));
+          yield* yieldString('#FFB7B2', firstName, 'First name', new DataView(buffer, offset, firstNameLength));
+          offset += firstNameLength;
+
+          const lastName = String.fromCharCode(...new Uint8Array(buffer, offset, lastNameLength));
+          yield* yieldString('#B5EAD7', lastName, 'Last name', new DataView(buffer, offset, lastNameLength));
+          offset += lastNameLength;
+
+          const street = String.fromCharCode(...new Uint8Array(buffer, offset, streetLength));
+          yield* yieldString('#FFB7B2', street, 'Street', new DataView(buffer, offset, streetLength));
+          offset += streetLength;
+
+          const city = String.fromCharCode(...new Uint8Array(buffer, offset, cityLength));
+          yield* yieldString('#B5EAD7', city, 'City', new DataView(buffer, offset, cityLength));
+          offset += cityLength;
+
+          const country = String.fromCharCode(...new Uint8Array(buffer, offset, countryLength));
+          yield* yieldString('#FFB7B2', country, 'Country', new DataView(buffer, offset, countryLength));
+          offset += countryLength;
+
+          const zip = String.fromCharCode(...new Uint8Array(buffer, offset, zipLength));
+          yield* yieldString('#FFB7B2', zip, 'Zip', new DataView(buffer, offset, zipLength));
+          offset += zipLength;
+
+          const phone = String.fromCharCode(...new Uint8Array(buffer, offset, phoneLength));
+          yield* yieldString('#FFB7B2', phone, 'Phone', new DataView(buffer, offset, phoneLength));
+          offset += phoneLength;
+
+          const email = String.fromCharCode(...new Uint8Array(buffer, offset, emailLength));
+          yield* yieldString('#FFB7B2', email, 'Email', new DataView(buffer, offset, emailLength));
+          offset += emailLength;
+
+          console.log({ firstName, lastName, street, city, country, zip, phone, email });
+        }
+
+        const zeroCount = cellContentArea - (offset - pageDataView.byteOffset);
+        yield* yieldBlob('#B5EAD7', zeroCount, 'Unallocated area', new DataView(buffer, offset, zeroCount));
+        offset += zeroCount;
       } else {
         const zeroCount = cellContentArea - (offset - pageDataView.byteOffset);
         yield* yieldBlob('#B5EAD7', zeroCount, 'Unallocated area', new DataView(buffer, offset, zeroCount));
