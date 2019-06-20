@@ -146,7 +146,7 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
 
       const cellContentArea = pageDataView.getUint16(pageOffset + 5);
       const zeroCount = cellContentArea - pageOffset + 12 - cellCount * 2 - 24 /* TODO: Find out why this? Cell contents length? */;
-      yield* yieldBlob(zeroCount, 'Zeroes before the content area');
+      yield* yieldBlob(zeroCount, 'Unallocated area');
 
       for (let index = 0; index < cellCount; index++) {
         yield* yieldUint32('Page number left child pointer');
@@ -179,7 +179,7 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
 
       const cellContentArea = pageDataView.getUint16(pageOffset + 5);
       const zeroCount = cellContentArea - pageOffset + 12 - cellCount * 2 - 20 /* TODO: Find out why this? Cell contents length? */;
-      yield* yieldBlob(zeroCount, 'Zeroes before the content area');
+      yield* yieldBlob(zeroCount, 'Unallocated area');
 
       for (let index = 0; index < cellCount; index++) {
         const payloadLengthVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellOffsets[index], 9));
