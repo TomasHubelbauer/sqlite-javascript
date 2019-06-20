@@ -10,6 +10,7 @@ The SQLite format is documented at: https://www.sqlite.org/fileformat.html
 I am using the Chinook test database file which is a newer alternative to
 Northwind.
 
+- Work on the schema parsing from page 1, specifically the overflowing cell #2
 - Finalize page types 2 and 10 and run all pages through `parsePage` for errors
 - See what's up with the page #35 reporting a varint leak
 - Finalize the `TODO`s in `parsePage` in the serial type prints
