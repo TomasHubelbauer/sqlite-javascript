@@ -1,9 +1,7 @@
 class Sqlite extends EventTarget {
-  #dataView;
-
   constructor(/** @type{DataView} */ dataView) {
     super();
-    this.#dataView = dataView;
+    this.dataView = dataView;
 
     this.header = String.fromCharCode(...new Uint8Array(dataView.buffer).slice(0, 16));
     if (this.header !== 'SQLite format 3\0') {
@@ -68,12 +66,10 @@ class Sqlite extends EventTarget {
     const pageOffset = pageIndex * this.pageSize + headerCarve;
     const pageSize = this.pageSize - headerCarve;
 
-    // Pull out the private field into a local variable to not break inference
-    /** @type{DataView} */ const dataView = this.#dataView;
     let pageDataView;
-    if (dataView.byteLength >= pageOffset + this.pageSize) {
+    if (this.dataView.byteLength >= pageOffset + this.pageSize) {
       // Slice the existing `DataView` because it contains the range of this page
-      pageDataView = new DataView(dataView.buffer, pageOffset, pageSize);
+      pageDataView = new DataView(this.dataView.buffer, pageOffset, pageSize);
     } else {
       // Ask the user to provide the required range on top of the initial `DataView`
       pageDataView = await new Promise((resolve, reject) => {

@@ -10,8 +10,6 @@ The SQLite format is documented at: https://www.sqlite.org/fileformat.html
 I am using the Chinook test database file which is a newer alternative to
 Northwind.
 
-For info about `#` error, see https://github.com/TomasHubelbauer/js-private-members
-
 - Make colors stable across byte type in the visual analyzer
 - Read payload item values to the title in the visual analyzer
 - Remember the last page in the visual analyzer

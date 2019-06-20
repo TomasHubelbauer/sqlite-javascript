@@ -182,90 +182,50 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
       yield* yieldBlob(zeroCount, 'Zeroes before the content area');
 
       for (let index = 0; index < cellCount; index++) {
-        let varintLength = 0;
-        let set = false;
-        do {
-          let byte = pageDataView.getUint8(cellOffsets[index] + varintLength);
-          set = (byte & (1 << (7 - 0))) !== 0;
-          varintLength++;
-        } while (set);
-
-        yield* yieldBlob(varintLength, 'Payload length varint');
         const payloadLengthVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellOffsets[index], 9));
-
-        varintLength = 0;
-        set = false;
-        do {
-          let byte = pageDataView.getUint8(cellOffsets[index] + payloadLengthVarint.byteLength + varintLength);
-          set = (byte & (1 << (7 - 0))) !== 0;
-          varintLength++;
-        } while (set);
-
-        yield* yieldBlob(varintLength, 'rowid varint');
+        yield* yieldBlob(payloadLengthVarint.byteLength, `Payload length varint (${payloadLengthVarint.value})`);
         const rowidVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellOffsets[index] + payloadLengthVarint.byteLength, 9));
-
-        varintLength = 0;
-        set = false;
-        do {
-          let byte = pageDataView.getUint8(cellOffsets[index] + payloadLengthVarint.byteLength + rowidVarint.byteLength + varintLength);
-          set = (byte & (1 << (7 - 0))) !== 0;
-          varintLength++;
-        } while (set);
-
-        yield* yieldBlob(varintLength, 'serial types length varint');
+        yield* yieldBlob(rowidVarint.byteLength, `rowid varint (${rowidVarint.value})`);
         const serialTypesVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellOffsets[index] + payloadLengthVarint.byteLength + rowidVarint.byteLength, 9));
+        yield* yieldBlob(serialTypesVarint.byteLength, `serial types length varint (${serialTypesVarint.value})`);
 
         const serialTypeVarints = [];
-
-        let offset = 0;
-        while (offset < serialTypesVarint.value - serialTypesVarint.byteLength) {
-          varintLength = 0;
-          set = false;
-          do {
-            let byte = pageDataView.getUint8(cellOffsets[index] + payloadLengthVarint.byteLength + rowidVarint.byteLength + serialTypesVarint.byteLength + offset + varintLength);
-            set = (byte & (1 << (7 - 0))) !== 0;
-            varintLength++;
-          } while (set);
-
-          const serialTypeVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellOffsets[index] + payloadLengthVarint.byteLength + rowidVarint.byteLength + serialTypesVarint.byteLength + offset, 9));
+        while (serialTypeVarints.reduce((a, c) => a + c.byteLength, 0) < serialTypesVarint.value - serialTypesVarint.byteLength) {
+          const serialTypeVarint = new VarInt(new DataView(pageDataView.buffer, pageDataView.byteOffset + cellOffsets[index] + payloadLengthVarint.byteLength + rowidVarint.byteLength + serialTypesVarint.byteLength + serialTypeVarints.reduce((a, c) => a + c.byteLength, 0), 9));
           serialTypeVarints.push(serialTypeVarint);
 
           // https://www.sqlite.org/datatype3.html
-          let type = '';
           if (serialTypeVarint.value === 0) {
-            type = 'NULL';
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type NULL varint (${serialTypeVarint.value})`);
           } else if (serialTypeVarint.value === 1) {
-            type = 'u8';
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type u8 varint (${serialTypeVarint.value})`);
           } else if (serialTypeVarint.value === 2) {
-            type = 'u16';
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type u16 varint (${serialTypeVarint.value})`);
           } else if (serialTypeVarint.value === 3) {
-            type = 'u24';
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type u24 varint (${serialTypeVarint.value})`);
           } else if (serialTypeVarint.value === 4) {
-            type = 'u32';
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type u32 varint (${serialTypeVarint.value})`);
           } else if (serialTypeVarint.value === 5) {
-            type = 'u48';
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type u48 varint (${serialTypeVarint.value})`);
           } else if (serialTypeVarint.value === 6) {
-            type = 'u64';
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type u64 varint (${serialTypeVarint.value})`);
           } else if (serialTypeVarint.value === 7) {
-            type = 'REAL';
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type REAL varint (${serialTypeVarint.value})`);
           } else if (serialTypeVarint.value === 8) {
-            type = 'FALSE';
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type FALSE varint (${serialTypeVarint.value})`);
           } else if (serialTypeVarint.value === 9) {
-            type = 'TRUE';
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type TRUE varint (${serialTypeVarint.value})`);
           } else if (serialTypeVarint.value === 10) {
-            type = 'INTERNAL';
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type INTERNAL varint (${serialTypeVarint.value})`);
           } else if (serialTypeVarint.value === 11) {
-            type = 'INTERNAL';
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type INTERNAL varint (${serialTypeVarint.value})`);
           } else if (serialTypeVarint.value >= 12 && serialTypeVarint.value % 2 === 0) {
-            type = 'BLOB of length ' + ((serialTypeVarint.value - 12) / 2);
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type BLOB (${(serialTypeVarint.value - 12) / 2}) varint (${serialTypeVarint.value})`);
           } else if (serialTypeVarint.value >= 13 && serialTypeVarint.value % 2 === 1) {
-            type = 'TEXT of length ' + ((serialTypeVarint.value - 13) / 2);
+            yield* yieldBlob(serialTypeVarint.byteLength, `serial type TEXT (${(serialTypeVarint.value - 13) / 2}) varint (${serialTypeVarint.value})`);
           } else {
             throw new Error('Unknown data type - cannot happen');
           }
-
-          yield* yieldBlob(varintLength, 'serial type at ' + offset + ' ' + type);
-          offset += varintLength;
         }
 
         for (const serialTypeVarint of serialTypeVarints) {
@@ -295,10 +255,10 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
             throw new Error('TODO');
           } else if (serialTypeVarint.value >= 12 && serialTypeVarint.value % 2 === 0) {
             const length = (serialTypeVarint.value - 12) / 2;
-            yield* yieldBlob(length, 'BLOB of length ' + length + ' payload item');
+            yield* yieldBlob(length, `BLOB (${length}) payload item`);
           } else if (serialTypeVarint.value >= 13 && serialTypeVarint.value % 2 === 1) {
             const length = (serialTypeVarint.value - 13) / 2;
-            yield* yieldBlob(length, 'TEXT of length ' + length + ' payload item');
+            yield* yieldBlob(length, `TEXT (${length}) payload item`);
           } else {
             throw new Error('Unknown data type - cannot happen');
           }
@@ -309,10 +269,6 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
       }
 
       break;
-
-
     }
   }
-
-
 }
