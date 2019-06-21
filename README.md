@@ -14,6 +14,8 @@ Northwind.
 - Work with the fact that the unallocated bytes on page 1 really seem to be unallocated
   as full defitions of those tables are available on the child pages later on
 - Finalize `constructGraph` for all page types
+- Figure out the problem on pages 37, 43, 948 with cell pointer being zero - overflow?
+- figure out the problem on pages 39, 42, 948 with cell pointer being > page count - overflow?
 - Finalize page types 2 and 10 and run all pages through `parsePage` for errors
 - See what's up with the page #35 reporting a varint leak
 - Finalize the `TODO`s in `parsePage` in the serial type prints

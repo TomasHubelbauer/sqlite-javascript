@@ -17,7 +17,14 @@ function* constructGraph(/** @type {DataView} */ dataView) {
         for (let index = 0; index < cellCount; index++) {
           const leftChildPointer = dataView.getUint32(pageOffset + cellsOffset + cellOffset);
           cellOffset += 4;
-          yield { source: pageNumber, target: leftChildPointer, relationship: `left child pointer ${index + 1}/${cellCount}` };
+
+          if (leftChildPointer === 0) {
+            // TODO: Figure out the problem on pages 37, 43, 948
+          } else if (leftChildPointer > pageCount) {
+            // TODO: Figure out the problem on pages 39, 42, 948
+          } else {
+            yield { source: pageNumber, target: leftChildPointer, relationship: `left child pointer ${index + 1}/${cellCount}` };
+          }
 
           const keyVarint = new VarInt(new DataView(dataView.buffer, pageOffset + cellsOffset + cellOffset, 9));
           cellOffset += keyVarint.byteLength + keyVarint.value;
