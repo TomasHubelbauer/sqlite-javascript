@@ -4,40 +4,15 @@ window.addEventListener('load', async () => {
   const dataView = new DataView(arrayBuffer);
   const pageSize = dataView.getUint16(16);
   const pageCount = dataView.getUint32(28);
-
-  for (const edge of constructGraph(dataView)) {
-    console.log(edge);
-  }
+  const edges = [...constructGraph(dataView)];
 
   customElements.define('th-dataviewbox', DataViewBox);
 
-  let pageIndex = Number(localStorage['page-index'] || '0');
+  window.addEventListener('hashchange', () => {
+    const pageNumber = Number(location.hash.substring(1));
+    localStorage.setItem('page-number', pageNumber);
 
-  document.getElementById('prevButton').addEventListener('click', () => {
-    if (pageIndex === 0) {
-      return;
-    }
-
-    pageIndex--;
-    render();
-  });
-
-  document.getElementById('nextButton').addEventListener('click', () => {
-    if (pageIndex === pageCount - 1) {
-      return;
-    }
-
-    pageIndex++;
-    render();
-  });
-
-  document.getElementById('pageNumberInput').addEventListener('change', event => {
-    pageIndex = event.currentTarget.valueAsNumber - 1;
-    render();
-  });
-
-  async function render() {
-    localStorage.setItem('page-index', pageIndex);
+    console.log(...edges.filter(edge => edge.source === pageNumber || pageCount.target === pageNumber));
 
     document.getElementById('pageDataViewBox').remove();
     const pageDataViewBox = document.createElement('th-dataviewbox');
@@ -45,11 +20,12 @@ window.addEventListener('load', async () => {
     pageDataViewBox.setAttribute('no-virtualization', 'yes');
     document.body.append(pageDataViewBox);
 
-    document.getElementById('pageNumberInput').value = pageIndex + 1;
+    document.getElementById('pageNumberInput').value = pageNumber;
     document.getElementById('pageNumberInput').min = 1;
     document.getElementById('pageNumberInput').max = pageCount;
     document.getElementById('pageCountSpan').textContent = `/ ${pageCount}`;
 
+    const pageIndex = pageNumber - 1;
     const dataView = new DataView(arrayBuffer, pageIndex * pageSize, pageSize);
     const details = [...parsePage(dataView, pageIndex)];
 
@@ -68,9 +44,40 @@ window.addEventListener('load', async () => {
         document.getElementById('detailsDiv').style.background = event.details.color;
       }
     });
+  });
+
+  const pageNumber = Number(localStorage['page-number']) || 1;
+  if (location.hash === '#' + pageNumber) {
+    // Dispatch a fake `hashchange` event so that the page renders if the hash hasn't changed but we F5'd
+    window.dispatchEvent(new Event('hashchange'));
   }
 
-  render();
+  location.hash = pageNumber;
+
+  document.getElementById('prevButton').addEventListener('click', () => {
+    const pageNumber = Number(location.hash);
+    if (pageNumber === 1) {
+      return;
+    }
+
+    location.hash = pageNumber - 1;
+  });
+
+  document.getElementById('nextButton').addEventListener('click', () => {
+    const pageNumber = Number(location.hash);
+    if (pageNumber === pageCount) {
+      return;
+    }
+
+    location.hash = pageNumber + 1;
+  });
+
+  document.getElementById('pageNumberInput').addEventListener('change', event => {
+    const pageNumber = event.currentTarget.valueAsNumber;
+    if (pageNumber >= 1 && pageNumber <= pageCount) {
+      location.hash = pageNumber;
+    }
+  });
 });
 
 function* yieldString(/** @type {string} */ color, /** @type {string} */ string, /** @type {string} */ title, /** @type {DataView} */ dataView) {
