@@ -19,7 +19,7 @@ window.addEventListener('load', async () => {
   });
 
   document.getElementById('nextButton').addEventListener('click', () => {
-    if (pageIndex === sqlite.pageCount - 1) {
+    if (pageIndex === pageCount - 1) {
       return;
     }
 
