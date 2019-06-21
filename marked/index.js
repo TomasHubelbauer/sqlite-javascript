@@ -27,6 +27,11 @@ window.addEventListener('load', async () => {
     render();
   });
 
+  document.getElementById('pageNumberInput').addEventListener('change', event => {
+    pageIndex = event.currentTarget.valueAsNumber - 1;
+    render();
+  });
+
   async function render() {
     localStorage.setItem('page-index', pageIndex);
 
@@ -36,7 +41,10 @@ window.addEventListener('load', async () => {
     pageDataViewBox.setAttribute('no-virtualization', 'yes');
     document.body.append(pageDataViewBox);
 
-    document.getElementById('pageSpan').textContent = `${pageIndex + 1} / ${pageCount}`;
+    document.getElementById('pageNumberInput').value = pageIndex + 1;
+    document.getElementById('pageNumberInput').min = 1;
+    document.getElementById('pageNumberInput').max = pageCount;
+    document.getElementById('pageCountSpan').textContent = `/ ${pageCount}`;
 
     const dataView = new DataView(arrayBuffer, pageIndex * pageSize, pageSize);
     const details = [...parsePage(dataView, pageIndex)];
@@ -164,7 +172,7 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
     offset += 4;
   }
 
-  yield* yieldU8('#FF9AA2', 'Page type', new DataView(buffer, offset, 1));
+  yield* yieldU8('#FF9AA2', 'Page type', new DataView(buffer, offset, 1), undefined, { 0x2: 'interior index', 0x5: 'interior table', 0xa: 'leaf index', 0xd: 'leaf table' });
   const pageType = pageDataView.getUint8(offset - pageDataView.byteOffset);
   yield* yieldU16('#C7CEEA', 'Freeblocks start', new DataView(buffer, offset += 1, 2), undefined, { 0: 'No freeblocks' });
   yield* yieldU16('#B5EAD7', 'Number of cells on the page', new DataView(buffer, offset += 2, 2));
@@ -196,7 +204,7 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
 
       offset += 2;
 
-      cellOffsets.reverse();
+      cellOffsets.sort((a, b) => a - b);
 
       // TODO: Find out how to really find the main table schema offset
       if (pageIndex === 0) {
@@ -309,7 +317,6 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
         }
 
         const zeroCount = cellContentArea - (offset - pageDataView.byteOffset);
-        console.log(zeroCount);
         yield* yieldBlob('#777777', zeroCount, 'TODO', new DataView(buffer, offset, zeroCount));
         offset += zeroCount;
       } else if (pageIndex === 2) {
@@ -472,14 +479,12 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
         cellOffsets.push(pageDataView.getUint16(offset - pageDataView.byteOffset));
       }
 
-      // TODO: Find out why this is only on certain pages and what's the real condition under which this happens
-      if (cellOffsets[0] > cellOffsets[cellOffsets.length - 1]) {
-        cellOffsets.reverse();
-      }
+      cellOffsets.sort((a, b) => a - b);
 
       offset += 2;
 
       const zeroCount = cellContentArea - (offset - pageDataView.byteOffset);
+      console.log(zeroCount);
       yield* yieldBlob('#B5EAD7', zeroCount, 'Unallocated area', new DataView(buffer, offset, zeroCount));
       offset += zeroCount;
 

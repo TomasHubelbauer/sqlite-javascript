@@ -10,7 +10,8 @@
   </head>
   <body>
     <button id="prevButton">Prev</button>
-    <span id="pageSpan"></span>
+    <input id="pageNumberInput" type="number" />
+    <span id="pageCountSpan"></span>
     <button id="nextButton">Next</button>
     <pre id="pageJsonPre"></pre>
     <div id="headerDiv">
@@ -31,7 +32,7 @@
       <span>e</span>
       <span>f</span>
     </div>
-    <div id="detailsDiv"></div>
+    <div id="detailsDiv">Hover over a cell to see its description…</div>
     <th-dataviewbox id="pageDataViewBox" no-virtualization="yes"></th-dataviewbox>
   </body>
 </html>
