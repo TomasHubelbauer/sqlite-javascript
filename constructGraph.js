@@ -8,6 +8,7 @@ function* constructGraph(/** @type {DataView} */ dataView) {
     const cellCount = dataView.getUint16((pageOffset || 100 /* Skip header if root page (offset zero) */) + 3);
     const cellsOffset = dataView.getUint16((pageOffset || 100 /* Skip header if root page (offset zero) */) + 5) || 65536;
     switch (pageType) {
+      // TODO: Parse out the first page of the overflow list if any
       case 0x2: {
         const rightMostPointer = dataView.getUint32(pageOffset + 8);
         yield { source: pageNumber, target: rightMostPointer, relationship: 'right most pointer' };
@@ -16,16 +17,12 @@ function* constructGraph(/** @type {DataView} */ dataView) {
         for (let index = 0; index < cellCount; index++) {
           const leftChildPointer = dataView.getUint32(pageOffset + cellsOffset + cellOffset);
           cellOffset += 4;
-          //yield { source: pageNumber, target: leftChildPointer, relationship: `left child pointer ${index + 1}/${cellCount}` };
-          //console.log({ source: pageNumber, target: leftChildPointer, relationship: `left child pointer ${index + 1}/${cellCount}` });
+          yield { source: pageNumber, target: leftChildPointer, relationship: `left child pointer ${index + 1}/${cellCount}` };
 
           const keyVarint = new VarInt(new DataView(dataView.buffer, pageOffset + cellsOffset + cellOffset, 9));
-          //console.log(keyVarint);
-          cellOffset += keyVarint.byteLength;
+          cellOffset += keyVarint.byteLength + keyVarint.value;
         }
 
-        // TODO: Parse out the left child pointers
-        // TODO: Parse out the first page of the overflow list if any
         break;
       }
       case 0x5: {
@@ -44,12 +41,12 @@ function* constructGraph(/** @type {DataView} */ dataView) {
 
         break;
       }
+      // TODO: Parse out the first page of the overflow list if any
       case 0xa: {
-        // TODO: Parse out the first page of the overflow list if any
         break;
       }
+      // TODO: Parse out the first page of the overflow list if any
       case 0xd: {
-        // TODO: Parse out the first page of the overflow list if any
         break;
       }
       default: {
