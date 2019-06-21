@@ -13,4 +13,5 @@ server, I just copied over the file.
 
 ## To-Do
 
-- Load cells and draw edges for their pointers
+- Load overflow page indices from the overflowing cells in 0xd, 0xa, 0x2
+- Load left child pointers in cells in 0x5, 0x2

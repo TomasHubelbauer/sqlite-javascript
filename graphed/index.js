@@ -20,6 +20,8 @@ window.addEventListener('load', async () => {
     const pageNumber = pageIndex + 1;
     document.title = pageNumber + '/' + pageCount;
     const pageType = dataView.getUint8(pageOffset);
+    const cellCount = dataView.getUint16(pageOffset + 3);
+    const cellsOffset = dataView.getUint16(pageOffset + 5) || 65536;
     switch (pageType) {
       case 0x2: {
         cytoscape.add({ group: 'nodes', data: { id: pageNumber, name: 'interior index page ' + pageNumber } });
@@ -32,6 +34,10 @@ window.addEventListener('load', async () => {
         } else {
           pendingEdges[rightMostPointer] = edge;
         }
+
+        // for (let cellIndex = 0; cellIndex < cellCount; cellIndex++) {
+        //   const leftPointer = dataView.getUint32(cellsOffset + cellIndex * )
+        // }
 
         break;
       }
