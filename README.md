@@ -10,7 +10,10 @@ The SQLite format is documented at: https://www.sqlite.org/fileformat.html
 I am using the Chinook test database file which is a newer alternative to
 Northwind.
 
-- Work on the schema parsing from page 1, specifically the overflowing cell #2
+- Parse the 4th record on page 4 containing a fax
+- Work with the fact that the unallocated bytes on page 1 really seem to be unallocated
+  as full defitions of those tables are available on the child pages later on
+- Finalize `constructGraph` for all page types
 - Finalize page types 2 and 10 and run all pages through `parsePage` for errors
 - See what's up with the page #35 reporting a varint leak
 - Finalize the `TODO`s in `parsePage` in the serial type prints

@@ -4,6 +4,7 @@ window.addEventListener('load', async () => {
   const dataView = new DataView(arrayBuffer);
   const pageSize = dataView.getUint16(16);
   const pageCount = dataView.getUint32(28);
+
   const edges = [...constructGraph(dataView)];
 
   customElements.define('th-dataviewbox', DataViewBox);
@@ -12,7 +13,8 @@ window.addEventListener('load', async () => {
     const pageNumber = Number(location.hash.substring(1));
     localStorage.setItem('page-number', pageNumber);
 
-    console.log(...edges.filter(edge => edge.source === pageNumber || pageCount.target === pageNumber));
+    console.log(...edges.filter(edge => edge.source === pageNumber || edge.target === pageNumber));
+
 
     document.getElementById('pageDataViewBox').remove();
     const pageDataViewBox = document.createElement('th-dataviewbox');
@@ -26,6 +28,9 @@ window.addEventListener('load', async () => {
     document.getElementById('pageCountSpan').textContent = `/ ${pageCount}`;
 
     const pageIndex = pageNumber - 1;
+    const printable = String.fromCharCode(...new Uint8Array(arrayBuffer, pageIndex * pageSize, pageSize).filter(b => b >= 26 && b <= 130));
+    console.log(printable);
+
     const dataView = new DataView(arrayBuffer, pageIndex * pageSize, pageSize);
     const details = [...parsePage(dataView, pageIndex)];
 
@@ -203,7 +208,38 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
     case 0x2: {
       const rightMostPointer = new DataView(buffer, offset, 4).getUint32();
       yield* withOnClick(yieldU32('#FFB7B2', 'Right-most pointer', new DataView(buffer, offset, 4)), () => location.hash = rightMostPointer);
-      // TODO: Parse the rest of the page
+
+      const cellOffsets = [];
+      for (let index = 0; index < cellCount; index++) {
+        yield* yieldU16(index % 2 === 0 ? '#FF9AA2' : '#C7CEEA', `Cell pointer #${index + 1}/${cellCount}`, new DataView(buffer, offset += index === 0 ? 4 : 2, 2));
+        cellOffsets.push(pageDataView.getUint16(offset - pageDataView.byteOffset));
+      }
+
+      offset += 2;
+
+      cellOffsets.sort((a, b) => a - b);
+
+      const zeroCount = cellContentArea - (offset - pageDataView.byteOffset);
+      yield* yieldBlob('#B5EAD7', zeroCount, 'Unallocated area', new DataView(buffer, offset, zeroCount));
+      offset += zeroCount;
+
+      for (let index = 0; index < cellCount; index++) {
+        yield* yieldU32('#E2F0CB', `Page number left child pointer ${index + 1}/${cellCount}`, new DataView(buffer, offset, 4));
+
+        const keyVarint = new VarInt(new DataView(buffer, offset += 4, 9));
+        yield* yieldBlob('#FFDAC1', keyVarint.byteLength, `Key varint (${keyVarint.value})`, new DataView(buffer, offset, keyVarint.byteLength));
+
+        offset += keyVarint.byteLength;
+
+        // TODO: Parse the payload
+        yield* yieldBlob('#B5EAD7', keyVarint.value, 'Payload', new DataView(buffer, offset, keyVarint.value));
+        offset += keyVarint.value;
+
+        if (index < cellCount - 1 && offset - pageDataView.byteOffset !== cellOffsets[index + 1]) {
+          throw new Error('Varint leaked into the next cell');
+        }
+      }
+
       break;
     }
     // TODO: Parse the SQL schema stored in the unallocated area - how to tell when it starts and what the format is?
@@ -505,8 +541,6 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
       const zeroCount = cellContentArea - (offset - pageDataView.byteOffset);
       yield* yieldBlob('#B5EAD7', zeroCount, 'Unallocated area', new DataView(buffer, offset, zeroCount));
       offset += zeroCount;
-
-      console.log(offset - pageDataView.byteOffset);
 
       for (let index = 0; index < cellCount; index++) {
         const payloadLengthVarint = new VarInt(new DataView(buffer, offset, 9));
