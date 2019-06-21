@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>SQLite Marked</title>
+    <link rel="stylesheet" href="index.css" />
+    <script src="https://tomashubelbauer.github.io/html-data-view-box/DataViewBox.js"></script>
+    <script src="../VarInt.js"></script>
+    <script src="index.js"></script>
+  </head>
+  <body>
+    <button id="prevButton">Prev</button>
+    <span id="pageSpan"></span>
+    <button id="nextButton">Next</button>
+    <pre id="pageJsonPre"></pre>
+    <div id="headerDiv">
+      <span>0</span>
+      <span>1</span>
+      <span>2</span>
+      <span>3</span>
+      <span>4</span>
+      <span>5</span>
+      <span>6</span>
+      <span>7</span>
+      <span>8</span>
+      <span>9</span>
+      <span>a</span>
+      <span>b</span>
+      <span>c</span>
+      <span>d</span>
+      <span>e</span>
+      <span>f</span>
+    </div>
+    <div id="detailsDiv"></div>
+    <th-dataviewbox id="pageDataViewBox" no-virtualization="yes"></th-dataviewbox>
+  </body>
+</html>
