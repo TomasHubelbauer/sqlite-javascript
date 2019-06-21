@@ -5,8 +5,18 @@
     <title>SQLite Graphed</title>
     <link rel="stylesheet" href="index.css" />
     <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.7.2/dist/cytoscape.min.js"></script>
+    <script src="../VarInt.js"></script>
+    <script src="../constructGraph.js"></script>
     <script src="index.js"></script>
   </head>
   <body>
+    <select id="layoutSelect">
+      <option>grid</option>
+      <option>circle</option>
+      <option>concentric</option>
+      <option>breadthfirst</option>
+      <option selected>cose</option>
+    </select>
+    <div id="graphDiv"></div>
   </body>
 </html>

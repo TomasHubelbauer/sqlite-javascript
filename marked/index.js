@@ -5,6 +5,10 @@ window.addEventListener('load', async () => {
   const pageSize = dataView.getUint16(16);
   const pageCount = dataView.getUint32(28);
 
+  for (const edge of constructGraph(dataView)) {
+    console.log(edge);
+  }
+
   customElements.define('th-dataviewbox', DataViewBox);
 
   let pageIndex = Number(localStorage['page-index'] || '0');
@@ -182,10 +186,6 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
   yield* yieldU8('#FFDAC1', 'Number of fragmented free bytes within the cell content area', new DataView(buffer, offset += 2, 1));
   offset += 1;
 
-  // 0x2 = interior index
-  // 0x5 = interior table
-  // 0ax = leaf index
-  // 0xd = leaf table
   switch (pageType) {
     case 0x2: {
       yield* yieldU32('#FFB7B2', 'Right-most pointer', new DataView(buffer, offset, 4));
@@ -484,9 +484,10 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
       offset += 2;
 
       const zeroCount = cellContentArea - (offset - pageDataView.byteOffset);
-      console.log(zeroCount);
       yield* yieldBlob('#B5EAD7', zeroCount, 'Unallocated area', new DataView(buffer, offset, zeroCount));
       offset += zeroCount;
+
+      console.log(offset - pageDataView.byteOffset);
 
       for (let index = 0; index < cellCount; index++) {
         const payloadLengthVarint = new VarInt(new DataView(buffer, offset, 9));
