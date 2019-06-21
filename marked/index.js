@@ -150,6 +150,12 @@ function* yieldU32(/** @type {string} */ color, /** @type {string} */ title, /**
   yield { color, title: title + ' BE byte 4/4 (LSB)' };
 }
 
+function* withOnClick(/** @type {IterableIterator} */ iterator, /** @type {() => void} */ onClick) {
+  for (let item of iterator) {
+    yield { ...item, onClick };
+  }
+}
+
 // This is different from the Sqlite class because it doesn't parse into structures, it just annotates bytes
 // The colors are from https://www.schemecolor.com/rainbow-pastels-color-scheme.php
 // https://www.sqlite.org/fileformat2.html
@@ -195,13 +201,15 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
 
   switch (pageType) {
     case 0x2: {
-      yield* yieldU32('#FFB7B2', 'Right-most pointer', new DataView(buffer, offset, 4));
+      const rightMostPointer = new DataView(buffer, offset, 4).getUint32();
+      yield* withOnClick(yieldU32('#FFB7B2', 'Right-most pointer', new DataView(buffer, offset, 4)), () => location.hash = rightMostPointer);
       // TODO: Parse the rest of the page
       break;
     }
     // TODO: Parse the SQL schema stored in the unallocated area - how to tell when it starts and what the format is?
     case 0x5: {
-      yield* yieldU32('#FFB7B2', 'Right-most pointer', new DataView(buffer, offset, 4));
+      const rightMostPointer = new DataView(buffer, offset, 4).getUint32();
+      yield* withOnClick(yieldU32('#FFB7B2', 'Right-most pointer', new DataView(buffer, offset, 4)), () => location.hash = rightMostPointer);
 
       const cellOffsets = [];
       for (let index = 0; index < cellCount; index++) {

@@ -37,3 +37,5 @@ Northwind.
   group membership to each `DataViewBox` byte cell for visual debugging and
   inspection of the database pages
 - Adjust the `DataViewBox` cell sizes to accomodate numbers of 3 digits
+- Introduce a new class `Record` which is fed a `DataView` and reads the serial
+  types and the payload into an API
