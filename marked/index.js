@@ -238,8 +238,12 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
         // Note that the second cell is overflowing, it says it is 285 bytes long but the cell cuts off after 245 bytes where the pointers begin
         for (let index = 0; index < 2; index++) {
           // This is the length and the rowid?
-          yield* yieldBlob('#777777', 3, 'TODO', new DataView(buffer, offset, 3));
-          offset += 3;
+          yield* yieldBlob('#777777', 2, 'TODO', new DataView(buffer, offset, 2));
+          offset += 2;
+
+          yield* yieldU8('#E2F0CB', 'RowID', new DataView(buffer, offset, 1));
+          const id = new DataView(buffer, offset, 1).getUint8();
+          offset += 1;
 
           const serialTypesLengthVarint = new VarInt(new DataView(buffer, offset, 9));
           yield* yieldBlob('#FFB7B2', serialTypesLengthVarint.byteLength, `Serial types varint (${serialTypesLengthVarint.value})`, new DataView(buffer, offset, serialTypesLengthVarint.byteLength));
@@ -308,7 +312,7 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
           const unknowns = new Uint8Array(buffer, offset, 2);
           offset += 2;
 
-          yield* yieldU8('#E2F0CB', 'Some ID (varint?)', new DataView(buffer, offset, 1));
+          yield* yieldU8('#E2F0CB', 'RowID', new DataView(buffer, offset, 1));
           const id = new DataView(buffer, offset, 1).getUint8();
           offset += 1;
 
@@ -344,7 +348,7 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
           const unknowns = new Uint8Array(buffer, offset, 1);
           offset += 1;
 
-          yield* yieldU8('#E2F0CB', 'Some ID (varint?)', new DataView(buffer, offset, 1));
+          yield* yieldU8('#E2F0CB', 'RowID', new DataView(buffer, offset, 1));
           const id = new DataView(buffer, offset, 1).getUint8();
           offset += 1;
 
