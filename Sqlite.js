@@ -99,7 +99,7 @@ class Sqlite {
                 }
 
                 const columnsSqls = tableSql.substring(1, tableSql.length - 2);
-                const columnsRegex = /^\s+\[(\w+)\] (\w+\(?\d*,?\d*\)?)/gm;
+                const columnsRegex = /^\s+\[(\w+)\] (\w+(\((\d+)(,\d+)?\))?)/gm;
                 let match;
                 while ((match = columnsRegex.exec(columnsSqls)) !== null) {
                   const [_, columnName, columnType] = match;
