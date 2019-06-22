@@ -15,7 +15,6 @@ window.addEventListener('load', async () => {
 
     console.log(...edges.filter(edge => edge.source === pageNumber || edge.target === pageNumber));
 
-
     document.getElementById('pageDataViewBox').remove();
     const pageDataViewBox = document.createElement('th-dataviewbox');
     pageDataViewBox.id = 'pageDataViewBox';

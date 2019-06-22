@@ -1,6 +1,5 @@
-class Sqlite extends EventTarget {
+class Sqlite {
   constructor(/** @type{DataView} */ dataView) {
-    super();
     this.dataView = dataView;
 
     this.header = String.fromCharCode(...new Uint8Array(dataView.buffer).slice(0, 16));
@@ -50,9 +49,10 @@ class Sqlite extends EventTarget {
     this.sqliteVersion = dataView.getUint32(96); // https://www.sqlite.org/c3ref/c_source_id.html
 
     // TODO: Load the schema to find table and column names and types
+    console.log(this.getPage(0));
   }
 
-  async getPage(/** @type{Number} */ pageIndex) {
+  getPage(/** @type{Number} */ pageIndex) {
     if (pageIndex < 0) {
       throw new Error('Page index must be greated than or equal to zero');
     }
@@ -61,29 +61,8 @@ class Sqlite extends EventTarget {
       throw new Error('Page index must less than the page count - 1');
     }
 
-    // Do not fetch the header bytes if this is the first page
-    const headerCarve = pageIndex === 0 ? 100 : 0;
-    const pageOffset = pageIndex * this.pageSize + headerCarve;
-    const pageSize = this.pageSize - headerCarve;
-
-    let pageDataView;
-    if (this.dataView.byteLength >= pageOffset + this.pageSize) {
-      // Slice the existing `DataView` because it contains the range of this page
-      pageDataView = new DataView(this.dataView.buffer, pageOffset, pageSize);
-    } else {
-      // Ask the user to provide the required range on top of the initial `DataView`
-      pageDataView = await new Promise((resolve, reject) => {
-        // TODO: See about using custom event with the fields
-        const event = new Event('slice');
-        event.pageOffset = pageOffset;
-        event.pageSize = pageSize;
-        event.resolve = resolve;
-        event.reject = reject;
-        this.dispatchEvent(event);
-      });
-    }
-
-    const pageType = pageDataView.getUint8(0);
+    const pageDataView = new DataView(this.dataView.buffer, pageIndex * this.pageSize, this.pageSize);
+    const pageType = pageDataView.getUint8(pageIndex === 0 ? 100 : 0);
     switch (pageType) {
       case 0x2: return new InteriorIndexPage(pageDataView);
       case 0x5: return new InteriorTablePage(pageDataView);
