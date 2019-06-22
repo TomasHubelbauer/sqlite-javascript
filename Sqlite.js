@@ -79,7 +79,7 @@ class Sqlite {
             const [type, name, tableName, rootPageNumber, sql] = cell.payload;
             switch (type) {
               case 'table': {
-                const table = { rowId, name, tableName, rootPageNumber, columns: [] };
+                const table = { rowId, name, tableName, rootPageNumber, columns: [], rows: [] };
 
                 let tableSql = sql;
                 if (!tableSql.startsWith('CREATE TABLE [')) {
@@ -106,27 +106,29 @@ class Sqlite {
                   table.columns.push({ name: columnName, type: columnType });
                 }
 
-                this.tables.push(table);
-
                 const tableRootPage = this.getPage(rootPageNumber);
                 switch (tableRootPage.pageType) {
                   case 0x2: {
                     throw new Error('Table root page must not be an interior index page');
                   }
                   case 0x5: {
-                    // TODO: console.log(name, 'interior', tableRootPage);
+                    console.log(name, 'interior', tableRootPage.cells);
                     break;
                   }
                   case 0xa: {
                     throw new Error('Table root page must not be a leaf index page');
                   }
                   case 0xd: {
-                    // TODO: console.log(name, 'leaf', tableRootPage);
+                    for (const cell of tableRootPage.cells) {
+                      table.rows.push([cell.rowId, ...cell.payload]);
+                    }
+
                     break;
                   }
                   default: throw new Error('Invalid page type');
                 }
 
+                this.tables.push(table);
                 break;
               }
               case 'index': {

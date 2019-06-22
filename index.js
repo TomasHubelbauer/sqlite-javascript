@@ -16,6 +16,11 @@ window.addEventListener('load', async () => {
 
     let tr = document.createElement('tr');
     thead.append(tr);
+
+    const th = document.createElement('th');
+    th.textContent = 'Row ID';
+    tr.append(th);
+
     for (const column of databaseTable.columns) {
       const th = document.createElement('th');
       th.textContent = column.name;
@@ -25,6 +30,17 @@ window.addEventListener('load', async () => {
 
     const tbody = document.createElement('tbody');
     table.append(tbody);
+
+    for (const row of databaseTable.rows) {
+      const tr = document.createElement('tr');
+      tbody.append(tr);
+
+      for (const cell of row) {
+        const td = document.createElement('td');
+        td.textContent = cell;
+        tr.append(td);
+      }
+    }
 
     document.body.append(table);
   }
