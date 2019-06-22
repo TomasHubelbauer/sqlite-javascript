@@ -1,0 +1,17 @@
+body {
+  font: normal 16px sans-serif;
+}
+
+table {
+  border: 1px solid #777;
+  margin: 1em;
+}
+
+caption {
+  text-align: left;
+}
+
+th {
+  background: #eee;
+  padding: 1ex;
+}

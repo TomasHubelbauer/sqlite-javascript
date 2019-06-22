@@ -39,5 +39,7 @@ class InteriorTablePage {
     if (this.cells.length !== this.cellCount) {
       throw new Error();
     }
+
+    this.cells.sort((a, b) => a.key - b.key);
   }
 }
