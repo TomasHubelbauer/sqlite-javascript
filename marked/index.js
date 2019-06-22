@@ -27,8 +27,6 @@ window.addEventListener('load', async () => {
     document.getElementById('pageCountSpan').textContent = `/ ${pageCount}`;
 
     const pageIndex = pageNumber - 1;
-    const printable = String.fromCharCode(...new Uint8Array(arrayBuffer, pageIndex * pageSize, pageSize).filter(b => b >= 26 && b <= 130));
-    console.log(printable);
 
     const dataView = new DataView(arrayBuffer, pageIndex * pageSize, pageSize);
     const details = [...parsePage(dataView, pageIndex)];
@@ -90,7 +88,7 @@ function* yieldString(/** @type {string} */ color, /** @type {string} */ string,
   }
 
   for (let index = 0; index < string.length; index++) {
-    if (String.fromCharCode(dataView.getUint8(index)) !== string[index]) {
+    if (decodeURIComponent(escape(String.fromCharCode(dataView.getUint8(index)))) !== string[index]) {
       throw new Error('The strings do not match');
     }
 
@@ -385,7 +383,7 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
             offset += length;
           } else if (serialTypeVarint.value >= 13 && serialTypeVarint.value % 2 === 1) {
             const length = (serialTypeVarint.value - 13) / 2;
-            const value = String.fromCharCode(...new Uint8Array(buffer.slice(offset, offset + length)));
+            const value = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(buffer.slice(offset, offset + length)))));
             yield* yieldString(color, value, `TEXT (${length}) payload item`, new DataView(buffer, offset, length));
             offset += length;
           } else {

@@ -108,7 +108,10 @@ class LeafTablePage {
         } else if (serialType >= 13 && serialType % 2 === 1) {
           const length = (serialType - 13) / 2;
           const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + length);
-          const text = String.fromCharCode(...new Uint8Array(slice));
+
+          // TODO: Document this and also respect the database input encoding actually
+          // https://stackoverflow.com/a/17192845/2715716
+          const text = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(slice))));
           //console.log('payload value TEXT', length, 'bytes', text);
           itemOffset += length;
           payload.push(text);

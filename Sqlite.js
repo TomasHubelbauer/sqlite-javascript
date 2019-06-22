@@ -2,6 +2,7 @@ class Sqlite {
   constructor(/** @type{DataView} */ dataView) {
     this.dataView = dataView;
 
+    // Note that this is ASCII so `fromCharCode` will work by itself
     this.header = String.fromCharCode(...new Uint8Array(dataView.buffer).slice(0, 16));
     if (this.header !== 'SQLite format 3\0') {
       throw new Error('Invalid header');
@@ -35,6 +36,10 @@ class Sqlite {
     this.textEncoding = dataView.getUint32(56); // 1 UTF8, 2 UTF16le, 3 UTF16be
     if (this.textEncoding !== 1 && this.textEncoding !== 2 && this.textEncoding !== 3) {
       throw new Error('Invalid text encoding value');
+    }
+
+    if (this.textEncoding !== 1) {
+      throw new Error('Non-UTF8 databases are not supported yet');
     }
 
     this.userVersion = dataView.getUint32(60);
@@ -112,7 +117,19 @@ class Sqlite {
                     throw new Error('Table root page must not be an interior index page');
                   }
                   case 0x5: {
-                    console.log(name, 'interior', tableRootPage.cells);
+                    // TODO: Make this recursive
+                    for (const cell of tableRootPage.cells) {
+                      const linkedPage = this.getPage(cell.leftChildPointer);
+                      if (linkedPage.pageType !== 0xd) {
+                        // TODO: Implement further descent
+                        break;
+                      }
+
+                      for (const cell2 of linkedPage.cells) {
+                        table.rows.push([cell2.rowId, ...cell2.payload]);
+                      }
+                    }
+
                     break;
                   }
                   case 0xa: {
