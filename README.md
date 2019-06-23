@@ -4,6 +4,11 @@
 
 > A JavaScript SQLite database file reader
 
+- Fix the case when the record misses some cells (alter table?) and so has less
+  cells than the table has columns - they should get default values but what if
+  one is missing in the middle?
+- Load information about a column being a key to a different table and make the
+  value a link based on that instead of the current heuristic
 - Implement recursively traversing pages until reaching the leaf
 - Coerce the ID column (identifier by a constraint) into the row ID fallback value
 - Ensure all rows are read after implementing recursive read

@@ -128,10 +128,29 @@ window.addEventListener('load', async () => {
       const tr = document.createElement('tr');
       tbody.append(tr);
 
-      for (const cell of row) {
-        const td = document.createElement('td');
-        td.textContent = cell;
-        tr.append(td);
+      // Note that 0 is the RowID preudo-cell
+      tr.id = row[0];
+
+      for (let index = 0; index < row.length; index++) {
+        const cell = row[index];
+
+        const column = index > 0 && columns[index - 1];
+        if (cell && column && column.name.endsWith('Id')) {
+          const td = document.createElement('td');
+
+          const referenceButton = document.createElement('button');
+          referenceButton.textContent = cell;
+          referenceButton.dataset.tableName = column.name.substring(0, column.name.length - 2);
+          referenceButton.dataset.rowId = cell;
+          referenceButton.addEventListener('click', handleNavigateToReferenceButtonClick);
+          td.append(referenceButton);
+
+          tr.append(td);
+        } else {
+          const td = document.createElement('td');
+          td.textContent = cell;
+          tr.append(td);
+        }
       }
     }
 
@@ -139,4 +158,13 @@ window.addEventListener('load', async () => {
   }
 
   renderTables();
+
+  function handleNavigateToReferenceButtonClick(event) {
+    console.log(event.currentTarget.dataset.tableName);
+    selectedTable = event.currentTarget.dataset.tableName;
+    renderTables();
+    renderCells();
+
+    location.href = '#' + event.currentTarget.dataset.rowId;
+  }
 });
