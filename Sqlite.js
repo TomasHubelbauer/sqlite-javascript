@@ -52,133 +52,160 @@ class Sqlite {
     }
 
     this.sqliteVersion = dataView.getUint32(96); // https://www.sqlite.org/c3ref/c_source_id.html
+  }
 
-    this.tables = [];
-    this.indices = [];
-
-    // TODO: Load the schema to find table and column names and types
+  *getTables() {
     const rootPage = this.getPage(1);
     if (rootPage.pageType !== 0x5) {
       throw new Error('The root page must be an interior table page');
     }
 
     for (let cell of rootPage.cells) {
-      const page = this.getPage(cell.leftChildPointer);
-      switch (page.pageType) {
-        case 0x2: {
-          throw new Error('Schema page must not be an interior index page');
+      const cellPage = this.getPage(cell.leftChildPointer);
+      if (cellPage.pageType !== 0xd) {
+        throw new Error('The cell page must be a leaf table page');
+      }
+
+      for (const cell of cellPage.cells) {
+        if (cell.payload.length !== 5) {
+          throw new Error('Master table must have five columns');
         }
-        case 0x5: {
-          throw new Error('Parsing interior table schema pages is not implemented yet');
+
+        const [type, name] = cell.payload;
+        if (type === 'table') {
+          yield name;
         }
-        case 0xa: {
-          throw new Error('Schema page must not be a leaf index page');
+      }
+    }
+  }
+
+  *getColumns(tableName) {
+    const rootPage = this.getPage(1);
+    if (rootPage.pageType !== 0x5) {
+      throw new Error('The root page must be an interior table page');
+    }
+
+    let tableSql;
+    for (let cell of rootPage.cells) {
+      const cellPage = this.getPage(cell.leftChildPointer);
+      if (cellPage.pageType !== 0xd) {
+        throw new Error('The cell page must be a leaf table page');
+      }
+
+      for (const cell of cellPage.cells) {
+        if (cell.payload.length !== 5) {
+          throw new Error('Master table must have five columns');
         }
-        case 0xd: {
-          for (const cell of page.cells) {
-            if (cell.payload.length !== 5) {
-              throw new Error('Lead table schema page payload does not follow master table schema');
-            }
 
-            const rowId = cell.rowId;
-            const [type, name, tableName, rootPageNumber, sql] = cell.payload;
-            switch (type) {
-              case 'table': {
-                const table = { rowId, name, tableName, rootPageNumber, columns: [], rows: [] };
-
-                let tableSql = sql;
-                if (!tableSql.startsWith('CREATE TABLE [')) {
-                  throw new Error();
-                }
-
-                tableSql = tableSql.substring('CREATE TABLE ['.length);
-                let index = tableSql.indexOf(']');
-                const checkName = tableSql.substring(0, index);
-                if (checkName !== name) {
-                  throw new Error();
-                }
-
-                tableSql = tableSql.substring(index + ']\n'.length);
-                if (!tableSql.startsWith('(') || !tableSql.endsWith(')')) {
-                  throw new Error();
-                }
-
-                const columnsSqls = tableSql.substring(1, tableSql.length - 2);
-                const columnsRegex = /^\s+\[(\w+)\] (\w+(\((\d+)(,\d+)?\))?)/gm;
-                let match;
-                while ((match = columnsRegex.exec(columnsSqls)) !== null) {
-                  const [_, columnName, columnType] = match;
-                  table.columns.push({ name: columnName, type: columnType });
-                }
-
-                const tableRootPage = this.getPage(rootPageNumber);
-                switch (tableRootPage.pageType) {
-                  case 0x2: {
-                    throw new Error('Table root page must not be an interior index page');
-                  }
-                  case 0x5: {
-                    // TODO: Make this recursive
-                    for (const cell of tableRootPage.cells) {
-                      const linkedPage = this.getPage(cell.leftChildPointer);
-                      if (linkedPage.pageType !== 0xd) {
-                        // TODO: Implement further descent
-                        break;
-                      }
-
-                      for (const cell2 of linkedPage.cells) {
-                        table.rows.push([cell2.rowId, ...cell2.payload]);
-                      }
-                    }
-
-                    break;
-                  }
-                  case 0xa: {
-                    throw new Error('Table root page must not be a leaf index page');
-                  }
-                  case 0xd: {
-                    for (const cell of tableRootPage.cells) {
-                      table.rows.push([cell.rowId, ...cell.payload]);
-                    }
-
-                    break;
-                  }
-                  default: throw new Error('Invalid page type');
-                }
-
-                this.tables.push(table);
-                break;
-              }
-              case 'index': {
-                this.indices.push({ rowId, name, tableName, rootPageNumber, sql });
-                const indexRootPage = this.getPage(rootPageNumber);
-                switch (indexRootPage.pageType) {
-                  case 0x2: {
-                    // TODO: console.log(name, 'interior', indexRootPage);
-                    break;
-                  }
-                  case 0x5: {
-                    throw new Error('Index root page must not be a interior table page');
-                  }
-                  case 0xa: {
-                    // TODO: console.log(name, 'interior', indexRootPage);
-                    break;
-                  }
-                  case 0xd: {
-                    throw new Error('Index root page must not be a leaf table page');
-                  }
-                  default: throw new Error('Invalid page type');
-                }
-
-                break;
-              }
-              default: throw new Error('Invalid object type');
-            }
-          }
-
+        const [type, name, _, __, sql] = cell.payload;
+        if (type === 'table' && name === tableName) {
+          tableSql = sql;
           break;
         }
-        default: throw new Error('Invalid page type');
       }
+
+      // Stop looking at more pages once this cell's one contained the table
+      if (tableSql) {
+        break;
+      }
+    }
+
+    if (tableSql === undefined) {
+      throw new Error('Table not found');
+    }
+
+    if (!tableSql.startsWith('CREATE TABLE [')) {
+      throw new Error();
+    }
+
+    tableSql = tableSql.substring('CREATE TABLE ['.length);
+    let index = tableSql.indexOf(']');
+    const checkName = tableSql.substring(0, index);
+    if (checkName !== tableName) {
+      throw new Error();
+    }
+
+    tableSql = tableSql.substring(index + ']\n'.length);
+    if (!tableSql.startsWith('(') || !tableSql.endsWith(')')) {
+      throw new Error();
+    }
+
+    const columnsSqls = tableSql.substring(1, tableSql.length - 2);
+    const columnsRegex = /^\s+\[(\w+)\] (\w+(\((\d+)(,\d+)?\))?)/gm;
+    let match;
+    while ((match = columnsRegex.exec(columnsSqls)) !== null) {
+      const [_, columnName, columnType] = match;
+      yield { name: columnName, type: columnType };
+    }
+  }
+
+  *getRows(tableName) {
+    const rootPage = this.getPage(1);
+    if (rootPage.pageType !== 0x5) {
+      throw new Error('The root page must be an interior table page');
+    }
+
+    let tableRootPageNumber;
+    for (let cell of rootPage.cells) {
+      const cellPage = this.getPage(cell.leftChildPointer);
+      if (cellPage.pageType !== 0xd) {
+        throw new Error('The cell page must be a leaf table page');
+      }
+
+      for (const cell of cellPage.cells) {
+        if (cell.payload.length !== 5) {
+          throw new Error('Master table must have five columns');
+        }
+
+        const [type, name, _, rootPageNumber] = cell.payload;
+        if (type === 'table' && name === tableName) {
+          tableRootPageNumber = rootPageNumber;
+          break;
+        }
+      }
+
+      // Stop looking at more pages once this cell's one contained the table
+      if (tableRootPageNumber) {
+        break;
+      }
+    }
+
+    if (tableRootPageNumber === undefined) {
+      throw new Error('Table not found');
+    }
+
+    const tableRootPage = this.getPage(tableRootPageNumber);
+    switch (tableRootPage.pageType) {
+      case 0x2: {
+        throw new Error('Table root page must not be an interior index page');
+      }
+      case 0x5: {
+        // TODO: Make this recursive
+        for (const cell of tableRootPage.cells) {
+          const linkedPage = this.getPage(cell.leftChildPointer);
+          if (linkedPage.pageType !== 0xd) {
+            // TODO: Implement further descent
+            break;
+          }
+
+          for (const cell2 of linkedPage.cells) {
+            yield [cell2.rowId, ...cell2.payload];
+          }
+        }
+
+        break;
+      }
+      case 0xa: {
+        throw new Error('Table root page must not be a leaf index page');
+      }
+      case 0xd: {
+        for (const cell of tableRootPage.cells) {
+          yield [cell.rowId, ...cell.payload];
+        }
+
+        break;
+      }
+      default: throw new Error('Invalid page type');
     }
   }
 
