@@ -4,8 +4,10 @@
 
 > A JavaScript SQLite database file reader
 
-- Debug this with the Prague `mbtiles` database which gives *not a leaf page* on
-  one of the pages now
+- Debug this with the Prague `mbtiles` database:
+  - *malformed URI sequence* in table `metadata`
+  - *invalid or out-of-range index* in table `gpkg_spatial_ref_sys`
+  - Very odd number of cells in `gpkg_contents`
 - Add `getIndices` (5 master page columns) and `getViews` (4 master page columns)
 - Fix the case when the record misses some cells (alter table?) and so has less
   cells than the table has columns - they should get default values but what if
