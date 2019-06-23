@@ -27,7 +27,7 @@ window.addEventListener('load', async () => {
           sqlite = new Sqlite(dataView);
           selectedTable = sqlite.getTables().next().value;
           renderTables();
-          renderCells(selectedTable);
+          renderCells();
         });
 
         fileReader.addEventListener('error', () => {
@@ -42,6 +42,10 @@ window.addEventListener('load', async () => {
     loadRemoteButton.textContent = 'Load from URL';
     loadRemoteButton.addEventListener('click', async () => {
       const url = prompt('URL:', 'Chinook_Sqlite.sqlite');
+      if (!url) {
+        return;
+      }
+
       fileName = url;
       const response = await fetch(url);
       const arrayBuffer = await response.arrayBuffer();
@@ -49,7 +53,7 @@ window.addEventListener('load', async () => {
       sqlite = new Sqlite(dataView);
       selectedTable = sqlite.getTables().next().value;
       renderTables();
-      renderCells(selectedTable);
+      renderCells();
     });
 
     tablesDiv.append(loadLocalButton, loadRemoteButton, document.createElement('hr'));
@@ -97,6 +101,10 @@ window.addEventListener('load', async () => {
   }
 
   function renderCells() {
+    if (!selectedTable) {
+      return;
+    }
+
     const cellsDiv = document.getElementById('cellsDiv');
     cellsDiv.innerHTML = '';
 

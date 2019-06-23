@@ -4,6 +4,9 @@
 
 > A JavaScript SQLite database file reader
 
+- Debug this with the Prague `mbtiles` database which gives *not a leaf page* on
+  one of the pages now
+- Add `getIndices` (5 master page columns) and `getViews` (4 master page columns)
 - Fix the case when the record misses some cells (alter table?) and so has less
   cells than the table has columns - they should get default values but what if
   one is missing in the middle?

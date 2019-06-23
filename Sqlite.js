@@ -54,119 +54,170 @@ class Sqlite {
     this.sqliteVersion = dataView.getUint32(96); // https://www.sqlite.org/c3ref/c_source_id.html
   }
 
-  *getTables() {
+  getRootPage() {
     const rootPage = this.getPage(1);
-    if (rootPage.pageType !== 0x5) {
-      throw new Error('The root page must be an interior table page');
+    if (rootPage.pageType !== 0x5 & rootPage.pageType !== 0xd) {
+      throw new Error('The root page must be a table page');
     }
 
-    for (let cell of rootPage.cells) {
-      const cellPage = this.getPage(cell.leftChildPointer);
-      if (cellPage.pageType !== 0xd) {
-        throw new Error('The cell page must be a leaf table page');
+    return rootPage;
+  }
+
+  *getTables() {
+    const rootPage = this.getRootPage();
+    switch (rootPage.pageType) {
+      case 0x5: {
+        for (let cell of rootPage.cells) {
+          const cellPage = this.getPage(cell.leftChildPointer);
+          if (cellPage.pageType !== 0xd) {
+            throw new Error('The cell page must be a leaf table page');
+          }
+
+          for (const cell of cellPage.cells) {
+            // Check that this cell is a table cell
+            if (cell.payload[0] !== 'table') {
+              continue;
+            }
+
+            if (cell.payload.length !== 5) {
+              throw new Error('Master table must have five columns');
+            }
+
+            yield cell.payload[1];
+          }
+        }
+
+        break;
       }
+      case 0xd: {
+        for (const cell of rootPage.cells) {
+          if (cell.payload[0] !== 'table') {
+            continue;
+          }
 
-      for (const cell of cellPage.cells) {
-        if (cell.payload.length !== 5) {
-          throw new Error('Master table must have five columns');
+          if (cell.payload.length !== 5) {
+            throw new Error('Master table must have five columns');
+          }
+
+          yield cell.payload[1];
         }
 
-        const [type, name] = cell.payload;
-        if (type === 'table') {
-          yield name;
-        }
+        break;
+      }
+      default: {
+        throw new Error('Invalid root page type');
       }
     }
   }
 
   *getColumns(tableName) {
-    const rootPage = this.getPage(1);
-    if (rootPage.pageType !== 0x5) {
-      throw new Error('The root page must be an interior table page');
-    }
-
+    const rootPage = this.getRootPage();
     let tableSql;
-    for (let cell of rootPage.cells) {
-      const cellPage = this.getPage(cell.leftChildPointer);
-      if (cellPage.pageType !== 0xd) {
-        throw new Error('The cell page must be a leaf table page');
-      }
+    switch (rootPage.pageType) {
+      case 0x5: {
+        for (let cell of rootPage.cells) {
+          const cellPage = this.getPage(cell.leftChildPointer);
+          if (cellPage.pageType !== 0xd) {
+            throw new Error('The cell page must be a leaf table page');
+          }
 
-      for (const cell of cellPage.cells) {
-        if (cell.payload.length !== 5) {
-          throw new Error('Master table must have five columns');
+          for (const cell of cellPage.cells) {
+            if (cell.payload.length !== 5) {
+              throw new Error('Master table must have five columns');
+            }
+
+            const [type, name, _, __, sql] = cell.payload;
+            if (type === 'table' && name === tableName) {
+              tableSql = sql;
+              break;
+            }
+          }
+
+          // Stop looking at more pages once this cell's one contained the table
+          if (tableSql) {
+            break;
+          }
         }
 
-        const [type, name, _, __, sql] = cell.payload;
-        if (type === 'table' && name === tableName) {
-          tableSql = sql;
-          break;
-        }
-      }
-
-      // Stop looking at more pages once this cell's one contained the table
-      if (tableSql) {
         break;
       }
+      case 0xd: {
+        for (const cell of rootPage.cells) {
+          if (cell.payload[0] !== 'table') {
+            continue;
+          }
+
+          if (cell.payload.length !== 5) {
+            throw new Error('Master table must have five columns');
+          }
+
+          if (cell.payload[1] === tableName) {
+            tableSql = cell.payload[4];
+            break;
+          }
+        }
+
+        break;
+      }
+      default: {
+        throw new Error('Invalid root page type');
+      }
     }
 
-    if (tableSql === undefined) {
-      throw new Error('Table not found');
-    }
-
-    if (!tableSql.startsWith('CREATE TABLE [')) {
-      throw new Error();
-    }
-
-    tableSql = tableSql.substring('CREATE TABLE ['.length);
-    let index = tableSql.indexOf(']');
-    const checkName = tableSql.substring(0, index);
-    if (checkName !== tableName) {
-      throw new Error();
-    }
-
-    tableSql = tableSql.substring(index + ']\n'.length);
-    if (!tableSql.startsWith('(') || !tableSql.endsWith(')')) {
-      throw new Error();
-    }
-
-    const columnsSqls = tableSql.substring(1, tableSql.length - 2);
-    const columnsRegex = /^\s+\[(\w+)\] (\w+(\((\d+)(,\d+)?\))?)/gm;
-    let match;
-    while ((match = columnsRegex.exec(columnsSqls)) !== null) {
-      const [_, columnName, columnType] = match;
-      yield { name: columnName, type: columnType };
-    }
+    yield* parseCreateTableStatement(tableSql, tableName);
   }
 
   *getRows(tableName) {
-    const rootPage = this.getPage(1);
-    if (rootPage.pageType !== 0x5) {
-      throw new Error('The root page must be an interior table page');
-    }
-
+    const rootPage = this.getRootPage();
     let tableRootPageNumber;
-    for (let cell of rootPage.cells) {
-      const cellPage = this.getPage(cell.leftChildPointer);
-      if (cellPage.pageType !== 0xd) {
-        throw new Error('The cell page must be a leaf table page');
-      }
+    switch (rootPage.pageType) {
+      case 0x5: {
+        for (let cell of rootPage.cells) {
+          const cellPage = this.getPage(cell.leftChildPointer);
+          if (cellPage.pageType !== 0xd) {
+            throw new Error('The cell page must be a leaf table page');
+          }
 
-      for (const cell of cellPage.cells) {
-        if (cell.payload.length !== 5) {
-          throw new Error('Master table must have five columns');
+          for (const cell of cellPage.cells) {
+            if (cell.payload.length !== 5) {
+              throw new Error('Master table must have five columns');
+            }
+
+            const [type, name, _, rootPageNumber] = cell.payload;
+            if (type === 'table' && name === tableName) {
+              tableRootPageNumber = rootPageNumber;
+              break;
+            }
+          }
+
+          // Stop looking at more pages once this cell's one contained the table
+          if (tableRootPageNumber) {
+            break;
+          }
         }
 
-        const [type, name, _, rootPageNumber] = cell.payload;
-        if (type === 'table' && name === tableName) {
-          tableRootPageNumber = rootPageNumber;
-          break;
-        }
-      }
-
-      // Stop looking at more pages once this cell's one contained the table
-      if (tableRootPageNumber) {
         break;
+      }
+      case 0xd: {
+        for (const cell of rootPage.cells) {
+          if (cell.payload[0] !== 'table') {
+            continue;
+          }
+
+          if (cell.payload.length !== 5) {
+            throw new Error('Master table must have five columns');
+          }
+
+          if (cell.payload[1] === tableName) {
+            tableRootPageNumber = cell.payload[3];
+            break;
+          }
+        }
+
+        break;
+      }
+      default: {
+        throw new Error('Invalid root page type');
       }
     }
 
@@ -225,7 +276,7 @@ class Sqlite {
       case 0x5: return new InteriorTablePage(pageDataView);
       case 0xa: return new LeafIndexPage(pageDataView);
       case 0xd: return new LeafTablePage(pageDataView);
-      default: throw new Error('Invalid page type ' + pageType);
+      default: throw new Error(`Invalid page type ${pageType} for page number ${pageNumber}`);
     }
   }
 }

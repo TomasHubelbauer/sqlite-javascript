@@ -1,18 +1,21 @@
+// // http://forensicsfromthesausagefactory.blogspot.com/2011/05/analysis-of-record-structure-within.html
 class LeafTablePage {
-  // // http://forensicsfromthesausagefactory.blogspot.com/2011/05/analysis-of-record-structure-within.html
   constructor(/** @type{DataView} */ dataView) {
-    this.pageType = dataView.getUint8(0);
+    // Ignore the header if this interior table page is the root database page
+    const offset = dataView.byteOffset === 0 ? 100 : 0;
+
+    this.pageType = dataView.getUint8(offset);
     if (this.pageType !== 0xd) {
       throw new Error('Not a leaf table page!');
     }
 
-    this.firstFreeBlock = dataView.getUint16(1);
-    this.cellCount = dataView.getUint16(3);
-    this.cellContentArea = dataView.getUint16(5);
-    this.fragmentedFreeBytes = dataView.getUint8(7);
+    this.firstFreeBlock = dataView.getUint16(offset + 1);
+    this.cellCount = dataView.getUint16(offset + 3);
+    this.cellContentArea = dataView.getUint16(offset + 5);
+    this.fragmentedFreeBytes = dataView.getUint8(offset + 7);
     this.cells = [];
     for (let cellPointerIndex = 0; cellPointerIndex < this.cellCount; cellPointerIndex++) {
-      const cellPointer = dataView.getUint16(8 + cellPointerIndex * 2);
+      const cellPointer = dataView.getUint16(offset + 8 + cellPointerIndex * 2);
 
       const lengthVarint = new VarInt(new DataView(dataView.buffer, dataView.byteOffset + cellPointer, 9));
       const rowIdVarint = new VarInt(new DataView(dataView.buffer, dataView.byteOffset + cellPointer + lengthVarint.byteLength, 9));
@@ -104,7 +107,10 @@ class LeafTablePage {
         } else if (serialType === 11) {
           throw new Error('Cannot access internal payload value');
         } else if (serialType >= 12 && serialType % 2 === 0) {
-          throw new Error('payload value BLOB not implemented');
+          const length = (serialType - 12) / 2;
+          const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + length);
+          itemOffset += length;
+          payload.push(slice);
         } else if (serialType >= 13 && serialType % 2 === 1) {
           const length = (serialType - 13) / 2;
           const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + length);
