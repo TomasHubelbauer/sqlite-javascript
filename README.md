@@ -4,6 +4,8 @@
 
 > A JavaScript SQLite database file reader
 
+## To-Do
+
 - Use https://stackoverflow.com/a/56722703/2715716 for the paragraphs in the menu
 - Debug this with the Prague `mbtiles` database:
   - *malformed URI sequence* in table `metadata`
@@ -27,11 +29,9 @@
   if the `DataView` doesn't contain the page range so that when opening by a URL
   we could read just the first (few) page(s) (depending on how big the file is
   as per the Content-Length header) and range-request the rest if range supported
-- Add a `pages` getter which returns an array proxy which does `getPage` on indexer access
-- Add a title which describes purpose and a background which highlights logical
-  group membership to each `DataViewBox` byte cell for visual debugging and
-  inspection of the database pages
-- Adjust the `DataViewBox` cell sizes to accomodate numbers of 3 digits
 - Introduce a new class `Record` which is fed a `DataView` and reads the serial
   types and the payload into an API
 - Replace `FileReader.readAsArrayBuffer` with `Blob.arrayBuffer` when supported
+
+There are also todoes for the [marked](marked/README.md#to-do) and
+[graphed](graphed/README.md#to-do) subprojects.
