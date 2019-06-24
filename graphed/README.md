@@ -15,3 +15,4 @@ server, I just copied over the file.
 
 - Load overflow page indices from the overflowing cells in 0xd, 0xa, 0x2
 - Load left child pointers in cells in 0x5, 0x2
+- Make cells clickable and take the user to the marked view of the cell's contents
