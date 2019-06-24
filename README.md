@@ -8,7 +8,7 @@
 
 - Debug this with the Prague `mbtiles` database:
   - Fix reading the likely overflowing TEXT `json` column in the `metadata` table
-  - *invalid or out-of-range index* in table `gpkg_spatial_ref_sys`
+  - Handle `length` being less than `payload` length (oerflow?) in the `gpkg_spatial_ref_sys` table
   - Very odd number of cells in `gpkg_contents`
 - Add `getIndices` (5 master page columns) and `getViews` (4 master page columns)
 - Fix the case when the record misses some cells (alter table?) and so has less

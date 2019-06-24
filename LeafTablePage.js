@@ -66,6 +66,12 @@ class LeafTablePage {
         }
       }
 
+      // TODO: Handle this
+      if (lengthVarint.value < payloadHeaderLengthVarint.value) {
+        console.log('TODO: Handle length being smaller than payload length')
+        break;
+      }
+
       // Read payload items corresponding to the serial types
       const payloadDataView = new DataView(dataView.buffer, dataView.byteOffset + cellPointer + lengthVarint.byteLength + rowIdVarint.byteLength + payloadHeaderLengthVarint.byteLength + serialTypesVariantsByteCount, lengthVarint.value - payloadHeaderLengthVarint.value);
       const payload = [];
