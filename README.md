@@ -6,6 +6,9 @@
 
 ## To-Do
 
+I am using [DB browser for SQLite](https://github.com/sqlitebrowser/sqlitebrowser)
+to compare databases as read by this library and by the program.
+
 - Debug this with the Prague `mbtiles` database:
   - Fix reading the likely overflowing TEXT `json` column in the `metadata` table
   - Handle `length` being less than `payload` length (oerflow?) in the `gpkg_spatial_ref_sys` table
