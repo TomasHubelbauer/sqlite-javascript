@@ -110,15 +110,21 @@ class LeafTablePage {
           const length = (serialType - 12) / 2;
           const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + length);
           itemOffset += length;
-          payload.push(slice);
+          payload.push('BLOB of ' + slice.byteLength + ' bytes');
         } else if (serialType >= 13 && serialType % 2 === 1) {
           const length = (serialType - 13) / 2;
           const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + length);
 
           // TODO: Document this and also respect the database input encoding actually
           // https://stackoverflow.com/a/17192845/2715716
-          const text = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(slice))));
-          //console.log('payload value TEXT', length, 'bytes', text);
+          let text;
+          try {
+            text = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(slice))));
+          } catch (error) {
+            console.log(String.fromCharCode(...new Uint8Array(slice)));
+            text = 'Invalid TEXT.';
+          }
+
           itemOffset += length;
           payload.push(text);
         } else {

@@ -7,7 +7,7 @@
 ## To-Do
 
 - Debug this with the Prague `mbtiles` database:
-  - *malformed URI sequence* in table `metadata`
+  - Fix reading the likely overflowing TEXT `json` column in the `metadata` table
   - *invalid or out-of-range index* in table `gpkg_spatial_ref_sys`
   - Very odd number of cells in `gpkg_contents`
 - Add `getIndices` (5 master page columns) and `getViews` (4 master page columns)
