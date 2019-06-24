@@ -2,6 +2,8 @@ window.addEventListener('load', async () => {
   let fileName;
   let sqlite;
   let selectedTable;
+  const pageSize = 25;
+  let selectedPage = 0;
 
   function renderTables() {
     const tablesDiv = document.getElementById('tablesDiv');
@@ -96,6 +98,7 @@ window.addEventListener('load', async () => {
 
   function handleSelectTableButtonClick(event) {
     selectedTable = event.currentTarget.dataset.tableName;
+    selectedPage = 0;
     renderTables();
     renderCells(selectedTable);
   }
@@ -107,6 +110,33 @@ window.addEventListener('load', async () => {
 
     const cellsDiv = document.getElementById('cellsDiv');
     cellsDiv.innerHTML = '';
+
+    const rows = [...sqlite.getRows(selectedTable)];
+    const pages = Math.ceil(rows.length / pageSize);
+
+    const pagerDiv = document.createElement('div');
+
+    if (rows.length > 0) {
+      const prevButton = document.createElement('button');
+      prevButton.textContent = '<';
+      prevButton.disabled = selectedPage === 0;
+      prevButton.addEventListener('click', handlePrevButtonClick);
+      pagerDiv.append(prevButton);
+
+      const nextButton = document.createElement('button');
+      nextButton.textContent = '>';
+      nextButton.disabled = selectedPage === pages - 1;
+      nextButton.addEventListener('click', handleNextButtonClick);
+      pagerDiv.append(nextButton);
+    }
+
+    if (rows.length === 0) {
+      pagerDiv.append(document.createTextNode(' The table is empty.'));
+    } else {
+      pagerDiv.append(document.createTextNode(` Page #${selectedPage + 1} out of ${pages} pages (of ${pageSize} items each). ${rows.length} items total.`));
+    }
+
+    cellsDiv.append(pagerDiv);
 
     const table = document.createElement('table');
 
@@ -131,8 +161,8 @@ window.addEventListener('load', async () => {
     const tbody = document.createElement('tbody');
     table.append(tbody);
 
-    const rows = [...sqlite.getRows(selectedTable)];
-    for (const row of rows) {
+    const page = rows.slice(selectedPage * pageSize, selectedPage * pageSize + pageSize);
+    for (const row of page) {
       const tr = document.createElement('tr');
       tbody.append(tr);
 
@@ -168,11 +198,31 @@ window.addEventListener('load', async () => {
   renderTables();
 
   function handleNavigateToReferenceButtonClick(event) {
-    console.log(event.currentTarget.dataset.tableName);
     selectedTable = event.currentTarget.dataset.tableName;
+    selectedPage = 0;
     renderTables();
     renderCells();
 
     location.href = '#' + event.currentTarget.dataset.rowId;
+  }
+
+  function handlePrevButtonClick() {
+    if (selectedPage === 0) {
+      return;
+    }
+
+    selectedPage--;
+    renderCells();
+  }
+
+  function handleNextButtonClick() {
+    const rows = [...sqlite.getRows(selectedTable)];
+    const pages = Math.ceil(rows.length / pageSize);
+    if (selectedPage === pages - 1) {
+      return;
+    }
+
+    selectedPage++;
+    renderCells();
   }
 });
