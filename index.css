@@ -50,7 +50,10 @@ body {
 
 #tablesDiv p {
   margin: 0 5px;
-  width: 190px;
+  
+  /* Make the paragraphs fill the available width but not stretch the parent further */
+  width: 0;
+  min-width: 100%;
 }
 
 #cellsDiv {
