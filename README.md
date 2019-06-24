@@ -12,6 +12,8 @@
   - Very odd number of cells in `gpkg_contents`
   - `images` table has 2692 rows not 4892 it actually has and the first 2692 all
     match so just the rest is missing for some reason (right most pointer?)
+  - `map` has 4848 but should have 4892 so probably the same right most pointer issue
+  - `gpkg_spatial_ref_sys` is not loading any rows but should have 5
 - Add `getIndices` (5 master page columns) and `getViews` (4 master page columns)
   and `getTriggers`
 - Fix the case when the record misses some cells (alter table?) and so has less
