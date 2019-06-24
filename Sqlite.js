@@ -225,38 +225,33 @@ class Sqlite {
       throw new Error('Table not found');
     }
 
-    const tableRootPage = this.getPage(tableRootPageNumber);
-    switch (tableRootPage.pageType) {
-      case 0x2: {
-        throw new Error('Table root page must not be an interior index page');
-      }
-      case 0x5: {
-        // TODO: Make this recursive
-        for (const cell of tableRootPage.cells) {
-          const linkedPage = this.getPage(cell.leftChildPointer);
-          if (linkedPage.pageType !== 0xd) {
-            // TODO: Implement further descent
-            break;
+    const traversePages = [this.getPage(tableRootPageNumber)];
+    let tableRootPage;
+    while ((tableRootPage = traversePages.shift()) !== undefined) {
+      switch (tableRootPage.pageType) {
+        case 0x2: {
+          throw new Error('Table root page must not be an interior index page');
+        }
+        case 0x5: {
+          for (const cell of tableRootPage.cells) {
+            const linkedPage = this.getPage(cell.leftChildPointer);
+            traversePages.push(linkedPage);
           }
 
-          for (const cell2 of linkedPage.cells) {
-            yield [cell2.rowId, ...cell2.payload];
+          break;
+        }
+        case 0xa: {
+          throw new Error('Table root page must not be a leaf index page');
+        }
+        case 0xd: {
+          for (const cell of tableRootPage.cells) {
+            yield [cell.rowId, ...cell.payload];
           }
-        }
 
-        break;
-      }
-      case 0xa: {
-        throw new Error('Table root page must not be a leaf index page');
-      }
-      case 0xd: {
-        for (const cell of tableRootPage.cells) {
-          yield [cell.rowId, ...cell.payload];
+          break;
         }
-
-        break;
+        default: throw new Error('Invalid page type');
       }
-      default: throw new Error('Invalid page type');
     }
   }
 

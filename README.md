@@ -10,15 +10,16 @@
   - Fix reading the likely overflowing TEXT `json` column in the `metadata` table
   - Handle `length` being less than `payload` length (oerflow?) in the `gpkg_spatial_ref_sys` table
   - Very odd number of cells in `gpkg_contents`
+  - `images` table has 2692 rows not 4892 it actually has and the first 2692 all
+    match so just the rest is missing for some reason (right most pointer?)
 - Add `getIndices` (5 master page columns) and `getViews` (4 master page columns)
+  and `getTriggers`
 - Fix the case when the record misses some cells (alter table?) and so has less
   cells than the table has columns - they should get default values but what if
   one is missing in the middle?
 - Load information about a column being a key to a different table and make the
   value a link based on that instead of the current heuristic
-- Implement recursively traversing pages until reaching the leaf
 - Coerce the ID column (identifier by a constraint) into the row ID fallback value
-- Ensure all rows are read after implementing recursive read
 - Finalize `constructGraph` for all page types
 - Figure out the problem on pages 37, 43, 948 with cell pointer being zero - overflow?
 - figure out the problem on pages 39, 42, 948 with cell pointer being > page count - overflow?
