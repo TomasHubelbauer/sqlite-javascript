@@ -6,7 +6,6 @@
 
 ## To-Do
 
-- Use https://stackoverflow.com/a/56722703/2715716 for the paragraphs in the menu
 - Debug this with the Prague `mbtiles` database:
   - *malformed URI sequence* in table `metadata`
   - *invalid or out-of-range index* in table `gpkg_spatial_ref_sys`
