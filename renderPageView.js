@@ -20,14 +20,20 @@ function renderPageView(arrayBuffer) {
     document.getElementById('titleDiv').textContent = 'Hover over a cell to see its description…';
     document.getElementById('cellsDiv').innerHTML = '';
     for (let cell of parsePage(new DataView(arrayBuffer, (pageNumber - 1) * pageSize, pageSize))) {
-      const cellSpan = document.createElement('span');
-      cellSpan.textContent = cell.utf8 || cell.hex || cell.dec;
-      if (cellSpan.textContent === ' ' || cellSpan.textContent === '\n' || cellSpan.textContent === '\t' || cellSpan.textContent === '') {
-        cellSpan.textContent = '\xa0' /* Non-breakable space */;
+      let value;
+      if (cell.utf8) {
+        value = cell.utf8 === ' ' || cell.utf8 === '\n' || cell.utf8 === '\t' || cell.utf8 === '' ? '\xa0' /* Non-breakable space */ : cell.utf8;
+      } else if (cell.hex) {
+        value = cell.hex;
+      } else if (cell.dec) {
+        value = cell.dec;
+      } else {
+        value = '\xa0' /* Non-breakable space */;
       }
 
-      cellSpan.title = cell.title;
-      cellSpan.dataset.title = cell.title;
+      const cellSpan = document.createElement('span');
+      cellSpan.textContent = value;
+      cellSpan.title = cell.offset + ': ' + cell.title;
       cellSpan.className = cell.className;
       cellSpan.addEventListener('mousemove', handleCellSpanMouseMove);
       document.getElementById('cellsDiv').append(cellSpan);
@@ -48,7 +54,7 @@ function renderPageView(arrayBuffer) {
   });
 
   function handleCellSpanMouseMove(event) {
-    document.getElementById('titleDiv').textContent = event.currentTarget.dataset.title;
+    document.getElementById('titleDiv').textContent = event.currentTarget.title;
   }
 
   function handleEdgeButtonClick(event) {
@@ -97,7 +103,8 @@ function* yieldString(/** @type {string} */ className, /** @type {string} */ str
 
   for (let index = 0; index < string.length; index++) {
     const utf8 = checkString[index];
-    yield { utf8, className, title: `${title} '${string}' character ${index + 1}/${string.length}: '${string[index]}'` };
+    const offset = dataView.byteOffset + index;
+    yield { offset, utf8, className, title: `${title} '${string}' character ${index + 1}/${string.length}: '${string[index]}'` };
   }
 }
 
@@ -108,7 +115,8 @@ function* yieldBlob(/** @type {string} */ className, /** @type {number} */ count
 
   for (let index = 0; index < count; index++) {
     const hex = dataView.getUint8(index).toString(16);
-    yield { hex, className, title: `${title}` + (count > 1 ? ` byte ${index + 1}/${count}` : '') };
+    const offset = dataView.byteOffset + index;
+    yield { offset, hex, className, title: `${title}` + (count > 1 ? ` byte ${index + 1}/${count}` : '') };
   }
 }
 
@@ -122,7 +130,8 @@ function* yieldU8(/** @type {string} */ className, /** @type {string} */ title, 
     throw new Error(`The value ${dec} does not match the excepted value ${constValue}`);
   }
 
-  yield { dec, className, title: `${title} (${constValue !== undefined ? 'always ' : ''}${dec} [${dec.toString(16)}]${specialValues && specialValues[dec] ? ': ' + specialValues[dec] : defaultValue || ''})` };
+  const offset = dataView.byteOffset;
+  yield { offset, dec, className, title: `${title} (${constValue !== undefined ? 'always ' : ''}${dec} [${dec.toString(16)}]${specialValues && specialValues[dec] ? ': ' + specialValues[dec] : defaultValue || ''})` };
 }
 
 function* yieldU16(/** @type {string} */ className, /** @type {string} */ title, /** @type {DataView} */ dataView, /** @type {number?} */ constValue, specialValues, defaultValue) {
@@ -136,8 +145,10 @@ function* yieldU16(/** @type {string} */ className, /** @type {string} */ title,
   }
 
   title = `${title} (${constValue !== undefined ? 'always ' : ''}${dec} [${dec.toString(16)}]${specialValues && specialValues[dec] ? ': ' + specialValues[dec] : defaultValue || ''})`;
-  yield { className, title: title + ' BE byte 1/2 (MSB)' };
-  yield { dec, className, title: title + ' BE byte 2/2 (LSB)' };
+  let offset = dataView.byteOffset;
+  yield { offset, className, title: title + ' BE byte 1/2 (MSB)' };
+  offset++;
+  yield { offset, dec, className, title: title + ' BE byte 2/2 (LSB)' };
 }
 
 function* yieldU32(/** @type {string} */ className, /** @type {string} */ title, /** @type {DataView} */ dataView, /** @type {number?} */ constValue, specialValues, defaultValue) {
@@ -151,10 +162,14 @@ function* yieldU32(/** @type {string} */ className, /** @type {string} */ title,
   }
 
   title = `${title} (${constValue !== undefined ? 'always ' : ''}${dec} [${dec.toString(16)}]${specialValues && specialValues[dec] ? ': ' + specialValues[dec] : defaultValue || ''})`;
-  yield { className, title: title + ' BE byte 1/4 (MSB)' };
-  yield { className, title: title + ' BE byte 2/4' };
-  yield { className, title: title + ' BE byte 3/4' };
-  yield { dec, className, title: title + ' BE byte 4/4 (LSB)' };
+  let offset = dataView.byteOffset;
+  yield { offset, className, title: title + ' BE byte 1/4 (MSB)' };
+  offset++;
+  yield { offset, className, title: title + ' BE byte 2/4' };
+  offset++;
+  yield { offset, className, title: title + ' BE byte 3/4' };
+  offset++;
+  yield { offset, dec, className, title: title + ' BE byte 4/4 (LSB)' };
 }
 
 // This is different from the Sqlite class because it doesn't parse into structures, it just annotates bytes
@@ -300,7 +315,7 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
         yield* yieldBlob('FFDAC1', rowidVarint.byteLength, `Row ID varint (${rowidVarint.value})`, new DataView(buffer, offset, rowidVarint.byteLength));
 
         const serialTypesLengthVarint = new VarInt(new DataView(buffer, offset += rowidVarint.byteLength, 9));
-        yield* yieldBlob('FFB7B2', serialTypesLengthVarint.byteLength, `Serial types varint (${serialTypesLengthVarint.value})`, new DataView(buffer, offset, serialTypesLengthVarint.byteLength));
+        yield* yieldBlob('FFB7B2', serialTypesLengthVarint.byteLength, `Serial types length varint (${serialTypesLengthVarint.value})`, new DataView(buffer, offset, serialTypesLengthVarint.byteLength));
         offset += serialTypesLengthVarint.byteLength;
 
         const serialTypeVarints = [];
@@ -398,8 +413,15 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
           className = className === 'B5EAD7' ? 'E2F0CB' : 'B5EAD7';
         }
 
-        if (index < cellCount - 1 && offset - pageDataView.byteOffset !== cellOffsets[index + 1]) {
-          throw new Error(`Varint leaked into the next cell! Offset is ${offset} and the next cell offset is ${cellOffsets[index + 1]}`);
+        if (index < cellCount - 1) {
+          const differenceToNext = cellOffsets[index + 1] - (offset - pageDataView.byteOffset);
+          if (differenceToNext === 4) {
+            // Overflow?
+            console.log('overflow?');
+            offset += differenceToNext;
+          } else if (differenceToNext !== 0) {
+            throw new Error(`Varint leaked into the next cell! Offset is ${offset} and the next cell offset is ${cellOffsets[index + 1]}, the difference is ${differenceToNext}`);
+          }
         }
       }
 
