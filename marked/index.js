@@ -13,7 +13,9 @@ window.addEventListener('load', async () => {
     const pageNumber = Number(location.hash.substring(1));
     localStorage.setItem('page-number', pageNumber);
 
-    console.log(...edges.filter(edge => edge.source === pageNumber || edge.target === pageNumber));
+    for (let edge of edges.filter(edge => edge.source === pageNumber || edge.target === pageNumber)) {
+      console.log(edge);
+    }
 
     document.getElementById('pageDataViewBox').remove();
     const pageDataViewBox = document.createElement('th-dataviewbox');
@@ -253,6 +255,10 @@ function* parsePage(/** @type {DataView} */ pageDataView, /** @type {Number} */ 
       offset += 2;
 
       cellOffsets.sort((a, b) => a - b);
+
+      const zeroCount = cellContentArea - (offset - pageDataView.byteOffset);
+      yield* yieldBlob('#B5EAD7', zeroCount, 'Unallocated area', new DataView(buffer, offset, zeroCount));
+      offset += zeroCount;
 
       for (let index = 0; index < cellCount; index++) {
         yield* yieldU32('#E2F0CB', `Page number left child pointer ${index + 1}/${cellCount}`, new DataView(buffer, offset, 4));

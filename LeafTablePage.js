@@ -128,6 +128,7 @@ class LeafTablePage {
             text = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(slice))));
           } catch (error) {
             console.log(String.fromCharCode(...new Uint8Array(slice)));
+            console.log('Page offset: ', dataView.byteOffset);
             text = 'Invalid TEXT.';
           }
 
