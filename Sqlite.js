@@ -234,8 +234,11 @@ class Sqlite {
         }
         case 0x5: {
           for (const cell of tableRootPage.cells) {
-            const linkedPage = this.getPage(cell.leftChildPointer);
-            traversePages.push(linkedPage);
+            traversePages.push(this.getPage(cell.leftChildPointer));
+          }
+
+          if (tableRootPage.rightMostPointer) {
+            traversePages.push(this.getPage(tableRootPage.rightMostPointer));
           }
 
           break;
@@ -246,6 +249,10 @@ class Sqlite {
         case 0xd: {
           for (const cell of tableRootPage.cells) {
             yield [cell.rowId, ...cell.payload];
+          }
+
+          if (tableRootPage.rightMostPointer) {
+            traversePages.push(this.getPage(tableRootPage.rightMostPointer));
           }
 
           break;

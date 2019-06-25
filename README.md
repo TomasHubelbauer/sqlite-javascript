@@ -12,10 +12,7 @@ to compare databases as read by this library and by the program.
 - Debug this with the Prague `mbtiles` database:
   - Fix reading the likely overflowing TEXT `json` column in the `metadata` table
   - Handle `length` being less than `payload` length (oerflow?) in the `gpkg_spatial_ref_sys` table
-  - Very odd number of cells in `gpkg_contents`
-  - `images` table has 2692 rows not 4892 it actually has and the first 2692 all
-    match so just the rest is missing for some reason (right most pointer?)
-  - `map` has 4848 but should have 4892 so probably the same right most pointer issue
+  - Missing columns in `gpkg_contents` due to SQL parser faults
   - `gpkg_spatial_ref_sys` is not loading any rows but should have 5
 - Add `getIndices` (5 master page columns) and `getViews` (4 master page columns)
   and `getTriggers`
