@@ -1,5 +1,6 @@
 window.addEventListener('load', async () => {
   let fileName;
+  let arrayBuffer;
   let dataView;
   let sqlite;
   let selectedTable;
@@ -21,13 +22,11 @@ window.addEventListener('load', async () => {
       const fileReader = new FileReader();
       fileReader.readAsArrayBuffer(file);
       fileReader.addEventListener('load', () => {
-        dataView = new DataView(fileReader.result);
+        arrayBuffer = fileReader.result;
+        dataView = new DataView(arrayBuffer);
         sqlite = new Sqlite(dataView);
         selectedTable = sqlite.getTables().next().value;
-        renderTables();
-        renderCells();
-        renderGraph();
-        renderPage(fileReader.result);
+        refreshView();
       });
 
       fileReader.addEventListener('error', () => {
@@ -47,14 +46,11 @@ window.addEventListener('load', async () => {
 
     fileName = url;
     const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
+    arrayBuffer = await response.arrayBuffer();
     dataView = new DataView(arrayBuffer);
     sqlite = new Sqlite(dataView);
     selectedTable = sqlite.getTables().next().value;
-    renderTables();
-    renderCells();
-    renderGraph();
-    renderPage(arrayBuffer);
+    refreshView();
   });
 
   const databaseViewInput = document.getElementById('databaseViewInput');
@@ -67,15 +63,38 @@ window.addEventListener('load', async () => {
   graphViewInput.addEventListener('change', handleViewInputChange);
 
   function handleViewInputChange(event) {
-    document.getElementById('databaseViewDiv').classList.toggle('selectedView', event.currentTarget.id === 'databaseViewInput');
-    document.getElementById('pageViewDiv').classList.toggle('selectedView', event.currentTarget.id === 'pageViewInput');
-    document.getElementById('graphViewDiv').classList.toggle('selectedView', event.currentTarget.id === 'graphViewInput');
+    const isDatabaseView = event.currentTarget.id === 'databaseViewInput';
+    document.getElementById('databaseViewDiv').classList.toggle('selectedView', isDatabaseView);
+    if (isDatabaseView) {
+      renderDatabaseView();
+    }
+
+    const isPageView = event.currentTarget.id === 'pageViewInput';
+    document.getElementById('pageViewDiv').classList.toggle('selectedView', isPageView);
+    if (isPageView) {
+      renderPageView(arrayBuffer);
+    }
+
+    const isGraphView = event.currentTarget.id === 'graphViewInput';
+    document.getElementById('graphViewDiv').classList.toggle('selectedView', isGraphView);
+    if (isGraphView) {
+      renderGraphView();
+    }
+  }
+
+  function refreshView() {
+    document.querySelector('input[type=radio]:checked').dispatchEvent(new Event('change'));
   }
 
   // Dispatch a change event for the tab the browser remembered was selected last
-  document.querySelector('input[type=radio]:checked').dispatchEvent(new Event('change'));
+  refreshView();
 
-  function renderTables() {
+
+  function renderDatabaseView() {
+    if (!sqlite) {
+      return;
+    }
+
     const tablesDiv = document.getElementById('tablesDiv');
     tablesDiv.innerHTML = '';
 
@@ -91,16 +110,7 @@ window.addEventListener('load', async () => {
       tableButton.addEventListener('click', handleSelectTableButtonClick)
       tablesDiv.append(tableButton);
     }
-  }
 
-  function handleSelectTableButtonClick(event) {
-    selectedTable = event.currentTarget.dataset.tableName;
-    selectedPage = 0;
-    renderTables();
-    renderCells(selectedTable);
-  }
-
-  function renderCells() {
     const itemsDiv = document.getElementById('itemsDiv');
     itemsDiv.innerHTML = '';
 
@@ -192,11 +202,16 @@ window.addEventListener('load', async () => {
     itemsDiv.append(table);
   }
 
+  function handleSelectTableButtonClick(event) {
+    selectedTable = event.currentTarget.dataset.tableName;
+    selectedPage = 0;
+    refreshView();
+  }
+
   function handleNavigateToReferenceButtonClick(event) {
     selectedTable = event.currentTarget.dataset.tableName;
     selectedPage = 0;
-    renderTables();
-    renderCells();
+    refreshView();
 
     location.href = '#' + event.currentTarget.dataset.rowId;
   }
@@ -207,7 +222,7 @@ window.addEventListener('load', async () => {
     }
 
     selectedPage--;
-    renderCells();
+    refreshView();
   }
 
   function handleNextButtonClick() {
@@ -218,10 +233,14 @@ window.addEventListener('load', async () => {
     }
 
     selectedPage++;
-    renderCells();
+    refreshView();
   }
 
-  function renderGraph() {
+  function renderGraphView() {
+    if (!dataView) {
+      return;
+    }
+
     const pageCount = dataView.getUint32(28);
     const pageLimit = 100; // Number(prompt('The database has ' + pageCount + ' pages. A large number of pages can result in a slow down. Enter the amount you want to graph:', pageCount)) || 0;
     const nodes = Array(pageLimit).fill(null).map((_, index) => ({ data: { id: index + 1, name: index + 1 } }));

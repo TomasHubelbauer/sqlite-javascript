@@ -1,4 +1,8 @@
-function renderPage(arrayBuffer) {
+function renderPageView(arrayBuffer) {
+  if (!arrayBuffer) {
+    return;
+  }
+
   const dataView = new DataView(arrayBuffer);
   const pageSize = dataView.getUint16(16);
   const pageCount = dataView.getUint32(28);
