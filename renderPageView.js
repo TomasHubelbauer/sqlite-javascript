@@ -19,7 +19,9 @@ function renderPageView(arrayBuffer) {
 
     document.getElementById('titleDiv').textContent = 'Hover over a cell to see its description…';
     document.getElementById('cellsDiv').innerHTML = '';
-    for (let cell of parsePage(new DataView(arrayBuffer, (pageNumber - 1) * pageSize, pageSize))) {
+
+    const pageOffset = (pageNumber - 1) * pageSize;
+    for (let cell of parsePage(new DataView(arrayBuffer, pageOffset, pageSize))) {
       let value;
       if (cell.utf8) {
         value = cell.utf8 === ' ' || cell.utf8 === '\n' || cell.utf8 === '\t' || cell.utf8 === '' ? '\xa0' /* Non-breakable space */ : cell.utf8;
@@ -33,7 +35,7 @@ function renderPageView(arrayBuffer) {
 
       const cellSpan = document.createElement('span');
       cellSpan.textContent = value;
-      cellSpan.title = cell.offset + ': ' + cell.title;
+      cellSpan.title = `${cell.offset - pageOffset}/${pageSize} (${cell.offset}/${dataView.byteLength}): ${cell.title}`;
       cellSpan.className = cell.className;
       cellSpan.addEventListener('mousemove', handleCellSpanMouseMove);
       document.getElementById('cellsDiv').append(cellSpan);
@@ -149,6 +151,25 @@ function* yieldU16(/** @type {string} */ className, /** @type {string} */ title,
   yield { offset, className, title: title + ' BE byte 1/2 (MSB)' };
   offset++;
   yield { offset, dec, className, title: title + ' BE byte 2/2 (LSB)' };
+}
+
+function* yieldU24(/** @type {string} */ className, /** @type {string} */ title, /** @type {DataView} */ dataView, /** @type {number?} */ constValue, specialValues, defaultValue) {
+  if (dataView.byteLength !== 3) {
+    throw new Error(`The data view length ${dataView.byteLength} is not 3 bytes of u24`);
+  }
+
+  const dec = dataView.getUint24(0);
+  if (constValue && dec !== constValue) {
+    throw new Error(`The value ${dec} does not match the excepted value ${constValue}`);
+  }
+
+  title = `${title} (${constValue !== undefined ? 'always ' : ''}${dec} [${dec.toString(16)}]${specialValues && specialValues[dec] ? ': ' + specialValues[dec] : defaultValue || ''})`;
+  let offset = dataView.byteOffset;
+  yield { offset, className, title: title + ' BE byte 1/3 (MSB)' };
+  offset++;
+  yield { offset, className, title: title + ' BE byte 2/3' };
+  offset++;
+  yield { offset, dec, className, title: title + ' BE byte 3/3 (LSB)' };
 }
 
 function* yieldU32(/** @type {string} */ className, /** @type {string} */ title, /** @type {DataView} */ dataView, /** @type {number?} */ constValue, specialValues, defaultValue) {
@@ -380,7 +401,8 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
             yield* yieldU16(className, `u16 payload item`, new DataView(buffer, offset, 2));
             offset += 2;
           } else if (serialTypeVarint.value === 3) {
-            throw new Error('TODO');
+            yield* yieldU24(className, `u24 payload item`, new DataView(buffer, offset, 3));
+            offset += 3;
           } else if (serialTypeVarint.value === 4) {
             throw new Error('TODO');
           } else if (serialTypeVarint.value === 5) {
@@ -416,8 +438,8 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
         if (index < cellCount - 1) {
           const differenceToNext = cellOffsets[index + 1] - (offset - pageDataView.byteOffset);
           if (differenceToNext === 4) {
-            // Overflow?
-            console.log('overflow?');
+            yield* yieldBlob('', differenceToNext, `Overflow page number?`, new DataView(buffer, offset, differenceToNext));
+            console.log('overflow at', offset, '?');
             offset += differenceToNext;
           } else if (differenceToNext !== 0) {
             throw new Error(`Varint leaked into the next cell! Offset is ${offset} and the next cell offset is ${cellOffsets[index + 1]}, the difference is ${differenceToNext}`);
@@ -427,5 +449,9 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
 
       break;
     }
+  }
+
+  if (offset !== pageDataView.byteOffset + pageDataView.byteLength) {
+    throw new Error(`The offset after marking is ${offset} but the end of the page is at ${pageDataView.byteOffset + pageDataView.byteLength}, ${pageDataView.byteLength} bytes after page start ${pageDataView.byteOffset}.`);
   }
 }
