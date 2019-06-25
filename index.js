@@ -1,99 +1,96 @@
 window.addEventListener('load', async () => {
   let fileName;
+  let dataView;
   let sqlite;
   let selectedTable;
   const pageSize = 25;
   let selectedPage = 0;
 
+  const loadLocalButton = document.getElementById('loadLocalButton');
+  loadLocalButton.addEventListener('click', () => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.addEventListener('change', async () => {
+      if (fileInput.files.length === 0) {
+        return;
+      }
+
+      const file = fileInput.files[0];
+      fileName = file.name;
+
+      const fileReader = new FileReader();
+      fileReader.readAsArrayBuffer(file);
+      fileReader.addEventListener('load', () => {
+        dataView = new DataView(fileReader.result);
+        sqlite = new Sqlite(dataView);
+        selectedTable = sqlite.getTables().next().value;
+        renderTables();
+        renderCells();
+        renderGraph();
+        renderPage(fileReader.result);
+      });
+
+      fileReader.addEventListener('error', () => {
+        alert('Failed to read the file');
+      });
+    });
+
+    fileInput.click();
+  });
+
+  const loadRemoteButton = document.getElementById('loadRemoteButton');
+  loadRemoteButton.addEventListener('click', async () => {
+    const url = prompt('URL:', 'Chinook_Sqlite.sqlite');
+    if (!url) {
+      return;
+    }
+
+    fileName = url;
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    dataView = new DataView(arrayBuffer);
+    sqlite = new Sqlite(dataView);
+    selectedTable = sqlite.getTables().next().value;
+    renderTables();
+    renderCells();
+    renderGraph();
+    renderPage(arrayBuffer);
+  });
+
+  const databaseViewInput = document.getElementById('databaseViewInput');
+  databaseViewInput.addEventListener('change', handleViewInputChange);
+
+  const pageViewInput = document.getElementById('pageViewInput');
+  pageViewInput.addEventListener('change', handleViewInputChange);
+
+  const graphViewInput = document.getElementById('graphViewInput');
+  graphViewInput.addEventListener('change', handleViewInputChange);
+
+  function handleViewInputChange(event) {
+    document.getElementById('databaseViewDiv').classList.toggle('selectedView', event.currentTarget.id === 'databaseViewInput');
+    document.getElementById('pageViewDiv').classList.toggle('selectedView', event.currentTarget.id === 'pageViewInput');
+    document.getElementById('graphViewDiv').classList.toggle('selectedView', event.currentTarget.id === 'graphViewInput');
+  }
+
+  // Dispatch a change event for the tab the browser remembered was selected last
+  document.querySelector('input[type=radio]:checked').dispatchEvent(new Event('change'));
+
   function renderTables() {
     const tablesDiv = document.getElementById('tablesDiv');
     tablesDiv.innerHTML = '';
 
-    const loadLocalButton = document.createElement('button');
-    loadLocalButton.textContent = 'Open file';
-    loadLocalButton.addEventListener('click', () => {
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.addEventListener('change', async () => {
-        if (fileInput.files.length === 0) {
-          return;
-        }
+    const databaseSpan = document.createElement('span');
+    databaseSpan.textContent = fileName;
+    tablesDiv.append(databaseSpan);
 
-        const file = fileInput.files[0];
-        fileName = file.name;
-
-        const fileReader = new FileReader();
-        fileReader.readAsArrayBuffer(file);
-        fileReader.addEventListener('load', () => {
-          const dataView = new DataView(fileReader.result);
-          sqlite = new Sqlite(dataView);
-          selectedTable = sqlite.getTables().next().value;
-          renderTables();
-          renderCells();
-        });
-
-        fileReader.addEventListener('error', () => {
-          alert('Failed to read the file');
-        });
-      });
-
-      fileInput.click();
-    });
-
-    const loadRemoteButton = document.createElement('button');
-    loadRemoteButton.textContent = 'Load from URL';
-    loadRemoteButton.addEventListener('click', async () => {
-      const url = prompt('URL:', 'Chinook_Sqlite.sqlite');
-      if (!url) {
-        return;
-      }
-
-      fileName = url;
-      const response = await fetch(url);
-      const arrayBuffer = await response.arrayBuffer();
-      const dataView = new DataView(arrayBuffer);
-      sqlite = new Sqlite(dataView);
-      selectedTable = sqlite.getTables().next().value;
-      renderTables();
-      renderCells();
-    });
-
-    tablesDiv.append(loadLocalButton, loadRemoteButton, document.createElement('hr'));
-
-    if (sqlite) {
-      const databaseSpan = document.createElement('span');
-      databaseSpan.textContent = fileName;
-      tablesDiv.append(databaseSpan);
-
-      for (const table of sqlite.getTables()) {
-        const tableButton = document.createElement('button');
-        tableButton.textContent = table;
-        tableButton.dataset.tableName = table;
-        tableButton.className = selectedTable === table ? 'selected item' : 'item';
-        tableButton.addEventListener('click', handleSelectTableButtonClick)
-        tablesDiv.append(tableButton);
-      }
-    } else {
-      const infoP = document.createElement('p');
-      infoP.textContent = 'Click one of the buttons above to open a SQLite database. The URL is prefilled with an example.';
-      tablesDiv.append(infoP);
+    for (const table of sqlite.getTables()) {
+      const tableButton = document.createElement('button');
+      tableButton.textContent = table;
+      tableButton.dataset.tableName = table;
+      tableButton.className = selectedTable === table ? 'selected item' : 'item';
+      tableButton.addEventListener('click', handleSelectTableButtonClick)
+      tablesDiv.append(tableButton);
     }
-
-    const markedA = document.createElement('a');
-    markedA.textContent = 'Marked SQLite viewer';
-    markedA.href = 'marked';
-
-    const markedP = document.createElement('p');
-    markedP.textContent = 'A binary view of a given page\'s contents with cell annotations';
-
-    const graphedA = document.createElement('a');
-    graphedA.textContent = 'Graphed SQLite viewer';
-    graphedA.href = 'graphed';
-
-    const graphedP = document.createElement('p');
-    graphedP.textContent = 'A visual view of relationships between the database\'s b-tree pages';
-
-    tablesDiv.append(document.createElement('hr'), markedA, markedP, graphedA, graphedP);
   }
 
   function handleSelectTableButtonClick(event) {
@@ -104,12 +101,8 @@ window.addEventListener('load', async () => {
   }
 
   function renderCells() {
-    if (!selectedTable) {
-      return;
-    }
-
-    const cellsDiv = document.getElementById('cellsDiv');
-    cellsDiv.innerHTML = '';
+    const itemsDiv = document.getElementById('itemsDiv');
+    itemsDiv.innerHTML = '';
 
     const rows = [...sqlite.getRows(selectedTable)];
     const pages = Math.ceil(rows.length / pageSize);
@@ -136,7 +129,7 @@ window.addEventListener('load', async () => {
       pagerDiv.append(document.createTextNode(` Page #${selectedPage + 1} out of ${pages} pages (of ${pageSize} items each). ${rows.length} items total.`));
     }
 
-    cellsDiv.append(pagerDiv);
+    itemsDiv.append(pagerDiv);
 
     const table = document.createElement('table');
 
@@ -146,24 +139,28 @@ window.addEventListener('load', async () => {
     let tr = document.createElement('tr');
     thead.append(tr);
 
-    const th = document.createElement('th');
+    let th = document.createElement('th');
     th.textContent = 'Row ID';
     tr.append(th);
 
     const columns = [...sqlite.getColumns(selectedTable)];
     for (const column of columns) {
-      const th = document.createElement('th');
+      th = document.createElement('th');
       th.textContent = column.name;
       th.title = column.type;
       tr.append(th);
     }
+
+    th = document.createElement('th');
+    th.textContent = 'Page #';
+    tr.append(th);
 
     const tbody = document.createElement('tbody');
     table.append(tbody);
 
     const page = rows.slice(selectedPage * pageSize, selectedPage * pageSize + pageSize);
     for (const row of page) {
-      const tr = document.createElement('tr');
+      tr = document.createElement('tr');
       tbody.append(tr);
 
       // Note that 0 is the RowID preudo-cell
@@ -192,10 +189,8 @@ window.addEventListener('load', async () => {
       }
     }
 
-    cellsDiv.append(table);
+    itemsDiv.append(table);
   }
-
-  renderTables();
 
   function handleNavigateToReferenceButtonClick(event) {
     selectedTable = event.currentTarget.dataset.tableName;
@@ -224,5 +219,25 @@ window.addEventListener('load', async () => {
 
     selectedPage++;
     renderCells();
+  }
+
+  function renderGraph() {
+    const pageCount = dataView.getUint32(28);
+    const pageLimit = 100; // Number(prompt('The database has ' + pageCount + ' pages. A large number of pages can result in a slow down. Enter the amount you want to graph:', pageCount)) || 0;
+    const nodes = Array(pageLimit).fill(null).map((_, index) => ({ data: { id: index + 1, name: index + 1 } }));
+    const edges = [...constructGraph(dataView, pageLimit)].filter(edge => edge.source <= pageLimit && edge.target <= pageLimit).map(edge => ({ data: edge }));
+
+    document.getElementById('graphViewDiv').innerHTML = '';
+
+    // Cytoscape is included using a`script` tag in `index.html`
+    window.cytoscape({
+      container: document.getElementById('graphViewDiv'),
+      style: [
+        { selector: 'node', style: { label: 'data(name)' } },
+        { selector: 'edge', style: { label: 'data(relationship)' } },
+      ],
+      layout: { name: 'cose' },
+      elements: { nodes, edges }
+    });
   }
 });

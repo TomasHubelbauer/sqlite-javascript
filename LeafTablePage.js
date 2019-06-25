@@ -78,22 +78,17 @@ class LeafTablePage {
       let itemOffset = 0;
       for (const serialType of serialTypes) {
         if (serialType === 0) {
-          //console.log('payload value NULL');
           payload.push(null);
         } else if (serialType === 1) {
-          //console.log('payload value INT 8 bit / 1 byte', payloadDataView.getUint8(itemOffset));
           payload.push(payloadDataView.getUint8(itemOffset));
           itemOffset += 1;
         } else if (serialType === 2) {
-          //console.log('payload value INT 16 bit / 2 bytes', payloadDataView.getUint16(itemOffset));
           payload.push(payloadDataView.getUint16(itemOffset));
           itemOffset += 2;
         } else if (serialType === 3) {
-          //console.log('payload value INT 24 bit / 3 bytes', payloadDataView.getUint24(itemOffset));
           payload.push(payloadDataView.getUint24(itemOffset));
           itemOffset += 3;
         } else if (serialType === 4) {
-          //console.log('payload value INT 32 bit / 4 bytes', payloadDataView.getUint32(itemOffset));
           payload.push(payloadDataView.getUint32(itemOffset));
           itemOffset += 4;
         } else if (serialType === 5) {
@@ -101,13 +96,12 @@ class LeafTablePage {
         } else if (serialType === 6) {
           throw new Error('payload value INT 64 bit not implemented');
         } else if (serialType === 7) {
-          //console.log('payload value REAL 64 bit / 8 bytes', payloadDataView.getFloat64(itemOffset));
           payload.push(payloadDataView.getFloat64(itemOffset));
           itemOffset += 4;
         } else if (serialType === 8) {
-          //console.log('payload value FALSE');
+          payload.push(false);
         } else if (serialType === 9) {
-          //console.log('payload value TRUE');
+          payload.push(true);
         } else if (serialType === 10) {
           throw new Error('Cannot access internal payload value');
         } else if (serialType === 11) {
@@ -139,7 +133,6 @@ class LeafTablePage {
         }
       }
 
-      //console.log(rowIdVarint.value, payload);
       this.cells.push({ rowId: rowIdVarint.value, payload });
     }
   }

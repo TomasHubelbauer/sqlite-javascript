@@ -4,9 +4,39 @@ html {
 
 body {
   display: flex;
+  flex-direction: column;
   font: normal 16px sans-serif;
   height: 100%;
   margin: 0;
+}
+
+#tabsDiv {
+  background: gray;
+  color: white;
+  padding: 1ex;
+}
+
+#databaseViewDiv {
+  display: none;
+  flex: 1;
+
+  /* Allow the `itemsDiv` pane to scroll by itself */
+  overflow: hidden;
+}
+
+#pageViewDiv {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+}
+
+#graphViewDiv {
+  display: none;
+  flex: 1;
+}
+
+.selectedView {
+  display: flex !important /* Beat the specificity of the ID selector */;
 }
 
 #tablesDiv {
@@ -37,36 +67,61 @@ body {
   font-weight: bold;
 }
 
-#tablesDiv hr {
-  background: #fff;
-  border: none;
-  height: 1px;
-  width: 95%;
-}
-
-#tablesDiv a {
-  margin: 15px 5px 0;
-}
-
-#tablesDiv p {
-  margin: 0 5px;
-  
-  /* Make the paragraphs fill the available width but not stretch the parent further */
-  width: 0;
-  min-width: 100%;
-}
-
-#cellsDiv {
+#itemsDiv {
   flex: 1;
   overflow: auto;
   padding: 1em;
 }
 
-#cellsDiv table {
+#itemsDiv table {
   border: 1px solid #f1f1f1;
 }
 
-#cellsDiv table th {
+#itemsDiv table th {
   background: #eee;
   padding: 1ex;
+}
+
+#titleDiv {
+  background: white;
+  overflow: hidden;
+  position: sticky;
+  text-overflow: ellipsis;
+  top: 0;
+  white-space: nowrap;
+}
+
+#cellsDiv span {
+  border: 1px solid transparent;
+  display: inline-block;
+  height: 20px;
+  line-height: 20px;
+  text-align: center;
+  width: 30px;
+}
+
+/* The colors are from https://www.schemecolor.com/rainbow-pastels-color-scheme.php */
+
+#cellsDiv span.C7CEEA {
+  background: #C7CEEA;
+}
+
+#cellsDiv span.B5EAD7 {
+  background: #B5EAD7;
+}
+
+#cellsDiv span.E2F0CB {
+  background: #E2F0CB;
+}
+
+#cellsDiv span.FFDAC1 {
+  background: #FFDAC1;
+}
+
+#cellsDiv span.FFB7B2 {
+  background: #FFB7B2;
+}
+
+#cellsDiv span.FF9AA2 {
+  background: #FF9AA2;
 }

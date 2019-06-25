@@ -1,6 +1,4 @@
-window.addEventListener('load', async () => {
-  const response = await fetch('Chinook_Sqlite.sqlite');
-  const arrayBuffer = await response.arrayBuffer();
+function renderPage(arrayBuffer) {
   const dataView = new DataView(arrayBuffer);
   const pageSize = dataView.getUint16(16);
   const pageCount = dataView.getUint32(28);
@@ -85,7 +83,7 @@ window.addEventListener('load', async () => {
       location.hash = pageNumber;
     }
   });
-});
+}
 
 function* yieldString(/** @type {string} */ className, /** @type {string} */ string, /** @type {string} */ title, /** @type {DataView} */ dataView) {
   const checkString = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(dataView.buffer, dataView.byteOffset, dataView.byteLength))));
@@ -360,7 +358,8 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
             yield* yieldU8(className, `u8 payload item`, new DataView(buffer, offset, 1));
             offset += 1;
           } else if (serialTypeVarint.value === 2) {
-            throw new Error('TODO');
+            yield* yieldU16(className, `u16 payload item`, new DataView(buffer, offset, 2));
+            offset += 2;
           } else if (serialTypeVarint.value === 3) {
             throw new Error('TODO');
           } else if (serialTypeVarint.value === 4) {
@@ -372,9 +371,9 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
           } else if (serialTypeVarint.value === 7) {
             throw new Error('TODO');
           } else if (serialTypeVarint.value === 8) {
-            throw new Error('TODO');
+            // TRUE
           } else if (serialTypeVarint.value === 9) {
-            throw new Error('TODO');
+            // FALSE
           } else if (serialTypeVarint.value === 10) {
             throw new Error('TODO');
           } else if (serialTypeVarint.value === 11) {

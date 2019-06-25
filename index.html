@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <title>SQLite JavaScript</title>
     <link rel="stylesheet" href="index.css" />
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.7.2/dist/cytoscape.min.js"></script>
     <script src="patchDataView.js"></script>
     <script src="VarInt.js"></script>
     <script src="Sqlite.js"></script>
@@ -12,10 +13,36 @@
     <script src="LeafIndexPage.js"></script>
     <script src="LeafTablePage.js"></script>
     <script src="parseCreateTableStatement.js"></script>
+    <script src="constructGraph.js"></script>
+    <script src="pageView.js"></script>
     <script src="index.js"></script>
   </head>
   <body>
-    <div id="tablesDiv"></div>
-    <div id="cellsDiv"></div>
+    <div id="tabsDiv">
+      <button id="loadLocalButton">Open file</button>
+      <button id="loadRemoteButton">Load from URL</button>
+      <input type="radio" checked name="view" id="databaseViewInput" />
+      <label for="databaseViewInput">Database View</label>
+      <input type="radio" name="view" id="pageViewInput" />
+      <label for="pageViewInput">Page View</label>
+      <input type="radio" name="view" id="graphViewInput" />
+      <label for="graphViewInput">Graph View (first 100 pages)</label>
+    </div>
+    <div id="databaseViewDiv" class="selectedView">
+      <div id="tablesDiv"></div>
+      <div id="itemsDiv">Click one of the buttons above to open a SQLite database. The URL is prefilled with an example.</div>
+    </div>
+    <div id="pageViewDiv">
+      <div>
+        <button id="prevButton">Prev</button>
+        <input id="pageNumberInput" type="number" />
+        <button id="nextButton">Next</button>
+        <span id="pageCountSpan"></span>
+      </div>
+      <div id="titleDiv">Hover over a cell to see its description…</div>
+      <div id="cellsDiv">Click one of the buttons above to open a SQLite database. The URL is prefilled with an example.</div>
+      <ul id="relsUl"></ul>
+    </div>
+    <div id="graphViewDiv">Click one of the buttons above to open a SQLite database. The URL is prefilled with an example.</div>
   </body>
 </html>

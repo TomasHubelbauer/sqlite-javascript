@@ -225,20 +225,20 @@ class Sqlite {
       throw new Error('Table not found');
     }
 
-    const traversePages = [this.getPage(tableRootPageNumber)];
-    let tableRootPage;
-    while ((tableRootPage = traversePages.shift()) !== undefined) {
+    const traversePageNumbers = [tableRootPageNumber];
+    while ((tableRootPageNumber = traversePageNumbers.shift()) !== undefined) {
+      const tableRootPage = this.getPage(tableRootPageNumber);
       switch (tableRootPage.pageType) {
         case 0x2: {
           throw new Error('Table root page must not be an interior index page');
         }
         case 0x5: {
           for (const cell of tableRootPage.cells) {
-            traversePages.push(this.getPage(cell.leftChildPointer));
+            traversePageNumbers.push(cell.leftChildPointer);
           }
 
           if (tableRootPage.rightMostPointer) {
-            traversePages.push(this.getPage(tableRootPage.rightMostPointer));
+            traversePageNumbers.push(tableRootPage.rightMostPointer);
           }
 
           break;
@@ -248,11 +248,11 @@ class Sqlite {
         }
         case 0xd: {
           for (const cell of tableRootPage.cells) {
-            yield [cell.rowId, ...cell.payload];
+            yield [cell.rowId, ...cell.payload, tableRootPageNumber];
           }
 
           if (tableRootPage.rightMostPointer) {
-            traversePages.push(this.getPage(tableRootPage.rightMostPointer));
+            traversePageNumbers.push(tableRootPage.rightMostPointer);
           }
 
           break;

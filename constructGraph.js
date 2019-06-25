@@ -1,7 +1,7 @@
-function* constructGraph(/** @type {DataView} */ dataView) {
+function* constructGraph(/** @type {DataView} */ dataView, /** @type {Number} */ pageLimit) {
   const pageSize = dataView.getUint16(16);
   const pageCount = dataView.getUint32(28);
-  for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+  for (let pageIndex = 0; pageIndex < Math.min(pageCount, pageLimit); pageIndex++) {
     const pageOffset = pageIndex * pageSize;
     const pageNumber = pageIndex + 1;
     const pageType = dataView.getUint8(pageOffset || 100 /* Skip header if root page (offset zero) */);
@@ -57,7 +57,7 @@ function* constructGraph(/** @type {DataView} */ dataView) {
         break;
       }
       default: {
-        throw new Error(`Invalid page type ${pageType}!`);
+        //throw new Error(`Invalid page type ${pageType}!`);
       }
     }
   }
