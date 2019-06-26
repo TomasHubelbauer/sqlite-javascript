@@ -75,6 +75,9 @@ body {
 
 #itemsDiv table {
   border: 1px solid #f1f1f1;
+  overflow-wrap: break-word;
+  table-layout: fixed;
+  width: 100%;
 }
 
 #itemsDiv table th {

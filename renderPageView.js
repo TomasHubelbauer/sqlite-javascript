@@ -393,8 +393,6 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
         className = 'B5EAD7';
         for (const serialTypeVarint of serialTypeVarints) {
           const payloadRoom = index === cellCount - 1 ? 'TODO: End of page / start of reserved space for extensions if any' : cellOffsets[index + 1] - (offset - pageDataView.byteOffset);
-          console.log(index, offset, 'type', serialTypeVarint.value, 'room', payloadRoom);
-
 
           if (serialTypeVarint.value === 0) {
             // NULL

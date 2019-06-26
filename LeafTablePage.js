@@ -13,9 +13,17 @@ class LeafTablePage {
     this.cellCount = dataView.getUint16(offset + 3);
     this.cellContentArea = dataView.getUint16(offset + 5);
     this.fragmentedFreeBytes = dataView.getUint8(offset + 7);
+
+    const cellOffsets = [];
+    for (let index = 0; index < this.cellCount; index++) {
+      cellOffsets.push(dataView.getUint16(offset + 8 + index * 2));
+    }
+
+    cellOffsets.sort((a, b) => a - b);
+
     this.cells = [];
     for (let cellPointerIndex = 0; cellPointerIndex < this.cellCount; cellPointerIndex++) {
-      const cellPointer = dataView.getUint16(offset + 8 + cellPointerIndex * 2);
+      const cellPointer = cellOffsets[cellPointerIndex];
 
       const lengthVarint = new VarInt(new DataView(dataView.buffer, dataView.byteOffset + cellPointer, 9));
       const rowIdVarint = new VarInt(new DataView(dataView.buffer, dataView.byteOffset + cellPointer + lengthVarint.byteLength, 9));
@@ -66,17 +74,13 @@ class LeafTablePage {
         }
       }
 
-      // TODO: Handle this
-      if (lengthVarint.value < payloadHeaderLengthVarint.value) {
-        console.log('TODO: Handle length being smaller than payload length')
-        break;
-      }
-
       // Read payload items corresponding to the serial types
       const payloadDataView = new DataView(dataView.buffer, dataView.byteOffset + cellPointer + lengthVarint.byteLength + rowIdVarint.byteLength + payloadHeaderLengthVarint.byteLength + serialTypesVariantsByteCount, lengthVarint.value - payloadHeaderLengthVarint.value);
       const payload = [];
       let itemOffset = 0;
       for (const serialType of serialTypes) {
+        const payloadRoom = cellPointerIndex === this.cellCount - 1 ? 'TODO: End of page / start of reserved space for extensions if any' : cellOffsets[cellPointerIndex + 1] - (cellPointer + lengthVarint.byteLength + rowIdVarint.byteLength + payloadHeaderLengthVarint.byteLength + serialTypesVariantsByteCount + itemOffset);
+
         if (serialType === 0) {
           payload.push(null);
         } else if (serialType === 1) {
@@ -108,26 +112,36 @@ class LeafTablePage {
           throw new Error('Cannot access internal payload value');
         } else if (serialType >= 12 && serialType % 2 === 0) {
           const length = (serialType - 12) / 2;
-          const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + length);
-          itemOffset += length;
-          payload.push('BLOB of ' + slice.byteLength + ' bytes');
+          const isOverflowing = length > payloadRoom;
+          if (isOverflowing) {
+            const fitLength = payloadRoom - 4 /* Overflow page pointer */;
+            const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + fitLength);
+            itemOffset += fitLength;
+            payload.push(`BLOB (${fitLength}/${length} bytes before overflow)`);
+          } else {
+            const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + length);
+            itemOffset += length;
+            payload.push(`BLOB of ${length} bytes`);
+          }
         } else if (serialType >= 13 && serialType % 2 === 1) {
           const length = (serialType - 13) / 2;
-          const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + length);
-
-          // TODO: Document this and also respect the database input encoding actually
-          // https://stackoverflow.com/a/17192845/2715716
-          let text;
-          try {
-            text = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(slice))));
-          } catch (error) {
-            console.log(String.fromCharCode(...new Uint8Array(slice)));
-            console.log('Page offset: ', dataView.byteOffset);
-            text = 'Invalid TEXT.';
+          const isOverflowing = length > payloadRoom;
+          if (isOverflowing) {
+            const fitLength = payloadRoom - 4 /* Overflow page pointer */;
+            const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + fitLength);
+            // TODO: Document this and also respect the database input encoding actually
+            // https://stackoverflow.com/a/17192845/2715716
+            const text = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(slice))));
+            itemOffset += fitLength;
+            payload.push(text + ` (${fitLength}/${length} bytes before overflow)`);
+          } else {
+            const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + length);
+            // TODO: Document this and also respect the database input encoding actually
+            // https://stackoverflow.com/a/17192845/2715716
+            const text = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(slice))));
+            itemOffset += length;
+            payload.push(text);
           }
-
-          itemOffset += length;
-          payload.push(text);
         } else {
           throw new Error('Unknown data type - cannot happen');
         }
