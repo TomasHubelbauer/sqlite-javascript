@@ -312,7 +312,6 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
     case 0xa: {
       break;
     }
-    // TODO: Do the overflow list page number u32
     case 0xd: {
       const cellOffsets = [];
       for (let index = 0; index < cellCount; index++) {
