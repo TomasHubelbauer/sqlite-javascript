@@ -455,10 +455,12 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
         if (index < cellCount - 1) {
           const differenceToNext = cellOffsets[index + 1] - (offset - pageDataView.byteOffset);
           if (differenceToNext === 4) {
-            yield* yieldU32('', `Overflow page number?`, new DataView(buffer, offset, differenceToNext));
-            console.log('overflow at', offset, '?');
+            yield* yieldU32('', `Overflow page number`, new DataView(buffer, offset, differenceToNext));
             offset += differenceToNext;
-          } else if (differenceToNext !== 0) {
+          } else if (differenceToNext >= 0) {
+            yield* yieldBlob('', differenceToNext, `Random space between cells?!`, new DataView(buffer, offset, differenceToNext));
+            offset += differenceToNext;
+          } else {
             throw new Error(`Varint leaked into the next cell! Offset is ${offset - pageDataView.byteOffset} and the next cell offset is ${cellOffsets[index + 1]}, the difference is ${differenceToNext}`);
           }
         }
