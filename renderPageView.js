@@ -392,6 +392,10 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
 
         className = 'B5EAD7';
         for (const serialTypeVarint of serialTypeVarints) {
+          const payloadRoom = index === cellCount - 1 ? 'TODO: End of page / start of reserved space for extensions if any' : cellOffsets[index + 1] - (offset - pageDataView.byteOffset);
+          console.log(index, offset, 'type', serialTypeVarint.value, 'room', payloadRoom);
+
+
           if (serialTypeVarint.value === 0) {
             // NULL
           } else if (serialTypeVarint.value === 1) {
@@ -421,22 +425,23 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
             throw new Error('TODO');
           } else if (serialTypeVarint.value >= 12 && serialTypeVarint.value % 2 === 0) {
             const length = (serialTypeVarint.value - 12) / 2;
-            yield* yieldBlob(className, length, `TEXT (${length}) payload item`, new DataView(buffer, offset, length));
-            offset += length;
+            const isOverflowing = length > payloadRoom;
+            if (isOverflowing) {
+              const fitLength = payloadRoom - 4 /* Overflow page pointer */;
+              yield* yieldBlob(className, fitLength, `TEXT (${fitLength}/${length}) overflowing payload item fitting part`, new DataView(buffer, offset, fitLength));
+            } else {
+              yield* yieldBlob(className, length, `TEXT (${length}) payload item`, new DataView(buffer, offset, length));
+              offset += length;
+            }
           } else if (serialTypeVarint.value >= 13 && serialTypeVarint.value % 2 === 1) {
             const length = (serialTypeVarint.value - 13) / 2;
-            if (offset + length > pageDataView.byteOffset + pageDataView.byteLength) {
-              let fitLength = (pageDataView.byteOffset + pageDataView.byteLength) - offset;
-              // TODO: Find out how to calculate this
-              const realFitLength = 994;
-              fitLength = realFitLength;
-
-              console.log('offset now', offset, fitLength, pageDataView.byteOffset, pageDataView.byteLength, String.fromCharCode(...new Uint8Array(buffer.slice(offset, offset + fitLength))));
+            const isOverflowing = length > payloadRoom;
+            if (isOverflowing) {
+              const fitLength = payloadRoom - 4 /* Overflow page pointer */;
               const value = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(buffer.slice(offset, offset + fitLength)))));
-              yield* yieldString(className, value, `TEXT (${fitLength}) payload item fitting part`, new DataView(buffer, offset, fitLength));
+              yield* yieldString(className, value, `TEXT (${fitLength}/${length}) overflowing payload item fitting part`, new DataView(buffer, offset, fitLength));
               offset += fitLength;
 
-              // TODO: Handle overflow
             } else {
               const value = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(buffer.slice(offset, offset + length)))));
               yield* yieldString(className, value, `TEXT (${length}) payload item`, new DataView(buffer, offset, length));
@@ -452,11 +457,11 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
         if (index < cellCount - 1) {
           const differenceToNext = cellOffsets[index + 1] - (offset - pageDataView.byteOffset);
           if (differenceToNext === 4) {
-            yield* yieldBlob('', differenceToNext, `Overflow page number?`, new DataView(buffer, offset, differenceToNext));
+            yield* yieldU32('', `Overflow page number?`, new DataView(buffer, offset, differenceToNext));
             console.log('overflow at', offset, '?');
             offset += differenceToNext;
           } else if (differenceToNext !== 0) {
-            throw new Error(`Varint leaked into the next cell! Offset is ${offset} and the next cell offset is ${cellOffsets[index + 1]}, the difference is ${differenceToNext}`);
+            throw new Error(`Varint leaked into the next cell! Offset is ${offset - pageDataView.byteOffset} and the next cell offset is ${cellOffsets[index + 1]}, the difference is ${differenceToNext}`);
           }
         }
       }

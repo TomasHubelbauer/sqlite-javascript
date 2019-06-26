@@ -9,6 +9,8 @@
 I am using [DB browser for SQLite](https://github.com/sqlitebrowser/sqlitebrowser)
 to compare databases as read by this library and by the program.
 
+- Handle overflow pages in page view - check `constructGraph` to see if is one
+  - Extend `constructGraph` to include links for overflow pages
 - Debug this with the Prague `mbtiles` database:
   - Find out how to calculate real length of the overflowing string in page view
   - Page 5 last entry *Undefined Cartesian* goes completely awry in page view?
