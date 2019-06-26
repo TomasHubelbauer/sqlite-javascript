@@ -425,9 +425,23 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
             offset += length;
           } else if (serialTypeVarint.value >= 13 && serialTypeVarint.value % 2 === 1) {
             const length = (serialTypeVarint.value - 13) / 2;
-            const value = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(buffer.slice(offset, offset + length)))));
-            yield* yieldString(className, value, `TEXT (${length}) payload item`, new DataView(buffer, offset, length));
-            offset += length;
+            if (offset + length > pageDataView.byteOffset + pageDataView.byteLength) {
+              let fitLength = (pageDataView.byteOffset + pageDataView.byteLength) - offset;
+              // TODO: Find out how to calculate this
+              const realFitLength = 994;
+              fitLength = realFitLength;
+
+              console.log('offset now', offset, fitLength, pageDataView.byteOffset, pageDataView.byteLength, String.fromCharCode(...new Uint8Array(buffer.slice(offset, offset + fitLength))));
+              const value = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(buffer.slice(offset, offset + fitLength)))));
+              yield* yieldString(className, value, `TEXT (${fitLength}) payload item fitting part`, new DataView(buffer, offset, fitLength));
+              offset += fitLength;
+
+              // TODO: Handle overflow
+            } else {
+              const value = decodeURIComponent(escape(String.fromCharCode(...new Uint8Array(buffer.slice(offset, offset + length)))));
+              yield* yieldString(className, value, `TEXT (${length}) payload item`, new DataView(buffer, offset, length));
+              offset += length;
+            }
           } else {
             throw new Error('Unknown data type - cannot happen');
           }
