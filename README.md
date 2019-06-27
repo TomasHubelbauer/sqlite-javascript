@@ -9,14 +9,19 @@
 I am using [DB browser for SQLite](https://github.com/sqlitebrowser/sqlitebrowser)
 to compare databases as read by this library and by the program.
 
+- Fix varint where I had to cap it to 8 bytes to not spill over to other values
+  but according to the docs it should take 9 bytes - there must be some gotcha
+  because those 8 bytes were all 0xff so maybe if there is 8 0xff then we're
+  done after the eight bytes? This is in Prague DB on page #5
+- Parse varint negative values correctly - right now hardcoded -1
 - Sort cell pointers before traversing pages in `getRows` for incremental rowIDs
 - Load full payload items when they overflow (allow the page to fetch the overflow page chain)
 - Handle overflow pages in page view - check `constructGraph` to see if is one
   - Extend `constructGraph` to include links for overflow pages
 - Finalize SQL parser to support the missing features of Chinook and the Prague database
+- Corce a sole integer primary key column with no value to the value of row ID
 - Debug this with the Prague `mbtiles` database:
   - Page 5 last entry *Undefined Cartesian* goes completely awry in page view?
-  - `gpkg_spatial_ref_sys` is not loading the fifth row and throws invalid or out of range index
   - `metadata` needs support for loading overflown payload portions
 - Add `getIndices` (5 master page columns) and `getViews` (4 master page columns)
   and `getTriggers`

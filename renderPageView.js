@@ -21,6 +21,7 @@ function renderPageView(arrayBuffer) {
     document.getElementById('cellsDiv').innerHTML = '';
 
     const pageOffset = (pageNumber - 1) * pageSize;
+    let cellCount = 0;
     for (let cell of parsePage(new DataView(arrayBuffer, pageOffset, pageSize))) {
       let value;
       if (cell.utf8) {
@@ -39,6 +40,12 @@ function renderPageView(arrayBuffer) {
       cellSpan.className = cell.className;
       cellSpan.addEventListener('mousemove', handleCellSpanMouseMove);
       document.getElementById('cellsDiv').append(cellSpan);
+
+      cellCount++;
+    }
+
+    if (cellCount !== pageSize) {
+      throw new Error(`The number of cells returned (${cellCount}) does not match the page size (${pageSize}).`);
     }
 
     document.getElementById('relsUl').innerHTML = '';
@@ -374,7 +381,6 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
         while (offset < serialTypesEndOffset) {
           const serialTypeVarint = new VarInt(new DataView(buffer, offset, 9));
           serialTypeVarints.push(serialTypeVarint);
-          offset += serialTypeVarint.byteLength;
 
           // https://www.sqlite.org/datatype3.html
           let type = '';
@@ -411,6 +417,7 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
           }
 
           yield* yieldBlob(className, serialTypeVarint.byteLength, `serial type ${type} varint (${serialTypeVarint.value})`, new DataView(buffer, offset, serialTypeVarint.byteLength));
+          offset += serialTypeVarint.byteLength;
           className = className === 'FF9AA2' ? 'C7CEEA' : 'FF9AA2';
         }
 
