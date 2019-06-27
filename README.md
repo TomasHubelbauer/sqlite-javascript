@@ -14,9 +14,7 @@ to compare databases as read by this library and by the program.
   - Extend `constructGraph` to include links for overflow pages
 - Finalize SQL parser to support the missing features of Chinook and the Prague database
 - Debug this with the Prague `mbtiles` database:
-  - Page 4 throws an error before going through all the cells
   - Page 5 last entry *Undefined Cartesian* goes completely awry in page view?
-  - Page 21 and many others have page type `0`
   - `gpkg_spatial_ref_sys` is not loading the fifth row and throws invalid or out of range index
 - Add `getIndices` (5 master page columns) and `getViews` (4 master page columns)
   and `getTriggers`

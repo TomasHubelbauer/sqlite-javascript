@@ -193,6 +193,35 @@ function* yieldU32(/** @type {string} */ className, /** @type {string} */ title,
   yield { offset, dec, className, title: title + ' BE byte 4/4 (LSB)' };
 }
 
+function* yieldReal64(/** @type {string} */ className, /** @type {string} */ title, /** @type {DataView} */ dataView, /** @type {number?} */ constValue, specialValues, defaultValue) {
+  if (dataView.byteLength !== 8) {
+    throw new Error(`The data view length ${dataView.byteLength} is not 8 bytes of REAL64`);
+  }
+
+  const dec = dataView.getFloat64(0);
+  if (constValue && dec !== constValue) {
+    throw new Error(`The value ${dec} does not match the excepted value ${constValue}`);
+  }
+
+  title = `${title} (${constValue !== undefined ? 'always ' : ''}${dec} [${dec.toString(16)}]${specialValues && specialValues[dec] ? ': ' + specialValues[dec] : defaultValue || ''})`;
+  let offset = dataView.byteOffset;
+  yield { offset, className, title: title + ' BE byte 1/8 (MSB)' };
+  offset++;
+  yield { offset, className, title: title + ' BE byte 2/8' };
+  offset++;
+  yield { offset, className, title: title + ' BE byte 3/8' };
+  offset++;
+  yield { offset, className, title: title + ' BE byte 4/8' };
+  offset++;
+  yield { offset, className, title: title + ' BE byte 5/8' };
+  offset++;
+  yield { offset, className, title: title + ' BE byte 6/8' };
+  offset++;
+  yield { offset, className, title: title + ' BE byte 7/8' };
+  offset++;
+  yield { offset, dec, className, title: title + ' BE byte 8/8 (LSB)' };
+}
+
 // This is different from the Sqlite class because it doesn't parse into structures, it just annotates bytes
 // https://www.sqlite.org/fileformat2.html
 function* parsePage(/** @type {DataView} */ pageDataView) {
@@ -405,13 +434,15 @@ function* parsePage(/** @type {DataView} */ pageDataView) {
             yield* yieldU24(className, `u24 payload item`, new DataView(buffer, offset, 3));
             offset += 3;
           } else if (serialTypeVarint.value === 4) {
-            throw new Error('TODO');
+            yield* yieldU32(className, `u32 payload item`, new DataView(buffer, offset, 4));
+            offset += 4;
           } else if (serialTypeVarint.value === 5) {
             throw new Error('TODO');
           } else if (serialTypeVarint.value === 6) {
             throw new Error('TODO');
           } else if (serialTypeVarint.value === 7) {
-            throw new Error('TODO');
+            yield* yieldReal64(className, `REAL payload item`, new DataView(buffer, offset, 8));
+            offset += 8;
           } else if (serialTypeVarint.value === 8) {
             // TRUE
           } else if (serialTypeVarint.value === 9) {

@@ -1,7 +1,7 @@
 DataView.prototype.getUint24 = function (byteOffset, littleEndian) {
   if (littleEndian === true) {
-    return this.buffer[byteOffset + 2] + this.buffer[byteOffset + 1] * 256 + this.buffer[byteOffset] * 65536;
+    throw new Error('Little endian is not supported!');
   } else {
-    return this.buffer[byteOffset] + this.buffer[byteOffset + 1] * 256 + this.buffer[byteOffset + 2] * 65536;
+    return ((this.getUint8(byteOffset) & 0xF) << 16) | ((this.getUint8(byteOffset + 1) & 0xFF) << 8) | (this.getUint8(byteOffset + 2) & 0xFF);
   }
 };

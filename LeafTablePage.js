@@ -101,7 +101,7 @@ class LeafTablePage {
           throw new Error('payload value INT 64 bit not implemented');
         } else if (serialType === 7) {
           payload.push(payloadDataView.getFloat64(itemOffset));
-          itemOffset += 4;
+          itemOffset += 8;
         } else if (serialType === 8) {
           payload.push(false);
         } else if (serialType === 9) {
