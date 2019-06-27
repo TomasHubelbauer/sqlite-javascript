@@ -217,7 +217,14 @@ function parseCreateTableStatement(sql, checkName) {
           break;
         }
 
-        throw new Error(makeErrorMessage('TEXT, DATETIME, DOUBLE, INTEGER, TINYINT', sql, index, newlines));
+        if (sql.substring(index, index + 'BLOB'.length) === 'BLOB') {
+          index += 'BLOB'.length;
+          columnTypes.push('BLOB');
+          state = 'column-constraints';
+          break;
+        }
+
+        throw new Error(makeErrorMessage('TEXT, DATETIME, DOUBLE, INTEGER, TINYINT, BLOB', sql, index, newlines));
       }
       case 'column-constraints': {
         // Ignore leading whitespace

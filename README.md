@@ -9,6 +9,7 @@
 I am using [DB browser for SQLite](https://github.com/sqlitebrowser/sqlitebrowser)
 to compare databases as read by this library and by the program.
 
+- Sort cell pointers before traversing pages in `getRows` for incremental rowIDs
 - Load full payload items when they overflow (allow the page to fetch the overflow page chain)
 - Handle overflow pages in page view - check `constructGraph` to see if is one
   - Extend `constructGraph` to include links for overflow pages
@@ -16,6 +17,7 @@ to compare databases as read by this library and by the program.
 - Debug this with the Prague `mbtiles` database:
   - Page 5 last entry *Undefined Cartesian* goes completely awry in page view?
   - `gpkg_spatial_ref_sys` is not loading the fifth row and throws invalid or out of range index
+  - `metadata` needs support for loading overflown payload portions
 - Add `getIndices` (5 master page columns) and `getViews` (4 master page columns)
   and `getTriggers`
 - Fix the case when the record misses some cells (alter table?) and so has less
