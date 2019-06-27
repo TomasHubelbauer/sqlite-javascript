@@ -1,4 +1,5 @@
 function parseCreateTableStatement(sql, checkName) {
+  console.log(sql);
   let state = 'CREATE';
 
   // Keep buffers/state values for the key values
@@ -240,6 +241,17 @@ function parseCreateTableStatement(sql, checkName) {
           break;
         }
 
+        if (sql.substring(index, index + 'CONSTRAINT'.length) === 'CONSTRAINT') {
+          index += 'CONSTRAINT'.length;
+          state = 'column-constraint-CONSTRAINT';
+          break;
+        }
+
+        if (sql.substring(index, index + 'ASC'.length) === 'ASC') {
+          index += 'ASC'.length;
+          break;
+        }
+
         if (sql[index] === ',') {
           index++;
           state = 'column-name';
@@ -260,8 +272,14 @@ function parseCreateTableStatement(sql, checkName) {
           break;
         }
 
-        if (sql.substring(index, index + '\'\''.length) === '\'\'') {
-          index += '\'\''.length;
+        if (sql[index] === '\'') {
+          index++;
+          const quoteIndex = sql.indexOf('\'', index);
+          if (quoteIndex === -1) {
+            throw new Error('No matching quote was found!');
+          }
+
+          index = quoteIndex + '\''.length;
           state = 'column-constraints';
           break;
         }
@@ -291,6 +309,25 @@ function parseCreateTableStatement(sql, checkName) {
         }
 
         throw new Error(makeErrorMessage('empty quotes', sql, index, newlines));
+      }
+      case 'column-constraint-CONSTRAINT': {
+        // Ignore leading whitespace
+        if (sql[index] === ' ' || sql[index] === '\n' || sql[index] === '\t') {
+          if (columnConstraintName === '') {
+            index++;
+            break;
+          } else {
+            index++;
+            columnConstraintName = '';
+            state = 'column-constraints';
+            break;
+          }
+        }
+
+
+        columnConstraintName += sql[index];
+        index++;
+        break;
       }
       case 'column-constraint-name': {
         // Ignore leading whitespace
