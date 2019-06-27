@@ -1,4 +1,4 @@
-class LeafIndexPage {
+export default class LeafIndexPage {
   constructor(/** @type{DataView} */ dataView) {
     this.pageType = dataView.getUint8(0);
     if (this.pageType !== 0xa) {

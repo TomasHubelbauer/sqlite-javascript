@@ -1,7 +1,7 @@
 // Static buffer for varint bits (maximum of 9 bytes where the first 8 contribute 7 bits and the last the full 8)
 const varintBits = new Array(8 * 7 + 8);
 
-class VarInt {
+export default class VarInt {
   constructor(/** @type {DataView} */ dataView) {
     if (dataView.byteLength > 9) {
       throw new Error('The var int data view length is too long, var int can be at most 9 bytes. Do not pass in longer data views as it could obscure an error.');

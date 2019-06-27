@@ -1,4 +1,4 @@
-function parseCreateTableStatement(sql, checkName) {
+export default function parseCreateTableStatement(sql, checkName) {
   let state = 'CREATE';
 
   // Keep buffers/state values for the key values

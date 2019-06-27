@@ -1,4 +1,8 @@
-function renderPageView(arrayBuffer) {
+import './patchDataView.js';
+import VarInt from './VarInt.js';
+import constructGraph from './constructGraph.js';
+
+export default function renderPageView(arrayBuffer) {
   if (!arrayBuffer) {
     return;
   }

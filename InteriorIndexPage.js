@@ -1,4 +1,4 @@
-class InteriorIndexPage {
+export default class InteriorIndexPage {
   constructor(/** @type{DataView} */ dataView) {
     this.pageType = dataView.getUint8(0);
     if (this.pageType !== 0x2) {

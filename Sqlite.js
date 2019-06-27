@@ -1,4 +1,10 @@
-class Sqlite {
+import InteriorIndexPage from './InteriorIndexPage.js';
+import InteriorTablePage from './InteriorTablePage.js';
+import LeafIndexPage from './LeafIndexPage.js';
+import LeafTablePage from './LeafTablePage.js';
+import parseCreateTableStatement from './parseCreateTableStatement.js';
+
+export default class Sqlite {
   constructor(/** @type{DataView} */ dataView) {
     this.dataView = dataView;
 

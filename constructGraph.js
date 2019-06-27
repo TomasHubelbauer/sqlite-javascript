@@ -1,4 +1,6 @@
-function* constructGraph(/** @type {DataView} */ dataView, /** @type {Number} */ pageLimit) {
+import VarInt from './VarInt.js';
+
+export default function* constructGraph(/** @type {DataView} */ dataView, /** @type {Number} */ pageLimit) {
   const pageSize = dataView.getUint16(16);
   const pageCount = dataView.getUint32(28);
   for (let pageIndex = 0; pageIndex < Math.min(pageCount, pageLimit); pageIndex++) {

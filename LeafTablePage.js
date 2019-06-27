@@ -1,5 +1,8 @@
+import './patchDataView.js';
+import VarInt from './VarInt.js';
+
 // // http://forensicsfromthesausagefactory.blogspot.com/2011/05/analysis-of-record-structure-within.html
-class LeafTablePage {
+export default class LeafTablePage {
   constructor(/** @type{DataView} */ dataView) {
     // Ignore the header if this interior table page is the root database page
     const offset = dataView.byteOffset === 0 ? 100 : 0;

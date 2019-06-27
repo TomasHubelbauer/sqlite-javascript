@@ -1,4 +1,6 @@
-class InteriorTablePage {
+import VarInt from './VarInt.js';
+
+export default class InteriorTablePage {
   constructor(/** @type{DataView} */ dataView) {
     // Ignore the header if this interior table page is the root database page
     const offset = dataView.byteOffset === 0 ? 100 : 0;
