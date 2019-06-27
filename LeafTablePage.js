@@ -149,5 +149,7 @@ class LeafTablePage {
 
       this.cells.push({ rowId: rowIdVarint.value, payload });
     }
+
+    this.cells.sort((a, b) => a.rowId - b.rowId);
   }
 }

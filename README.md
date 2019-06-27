@@ -14,7 +14,6 @@ to compare databases as read by this library and by the program.
   because those 8 bytes were all 0xff so maybe if there is 8 0xff then we're
   done after the eight bytes? This is in Prague DB on page #5
 - Parse varint negative values correctly - right now hardcoded -1
-- Sort cell pointers before traversing pages in `getRows` for incremental rowIDs
 - Load full payload items when they overflow (allow the page to fetch the overflow page chain)
 - Handle overflow pages in page view - check `constructGraph` to see if is one
   - Extend `constructGraph` to include links for overflow pages
