@@ -1,5 +1,4 @@
 function parseCreateTableStatement(sql, checkName) {
-  console.log(sql);
   let state = 'CREATE';
 
   // Keep buffers/state values for the key values
@@ -211,7 +210,14 @@ function parseCreateTableStatement(sql, checkName) {
           break;
         }
 
-        throw new Error(makeErrorMessage('TEXT, DATETIME, DOUBLE, INTEGER', sql, index, newlines));
+        if (sql.substring(index, index + 'TINYINT'.length) === 'TINYINT') {
+          index += 'TINYINT'.length;
+          columnTypes.push('TINYINT');
+          state = 'column-constraints';
+          break;
+        }
+
+        throw new Error(makeErrorMessage('TEXT, DATETIME, DOUBLE, INTEGER, TINYINT', sql, index, newlines));
       }
       case 'column-constraints': {
         // Ignore leading whitespace
@@ -426,6 +432,27 @@ function parseCreateTableStatement(sql, checkName) {
           break;
         }
 
+        if (sql.substring(index, index + 'UNIQUE'.length) === 'UNIQUE') {
+          index += 'UNIQUE'.length;
+
+          const openingParenthesisIndex = sql.indexOf('(', index);
+          if (openingParenthesisIndex === -1) {
+            throw new Error('UNIQUE is not followed by an opening parenthesis');
+          }
+
+          index = openingParenthesisIndex + '('.length;
+
+          const closingParenthesisIndex = sql.indexOf(')', index);
+          if (closingParenthesisIndex === -1) {
+            throw new Error('UNIQUE ( is not followed by a closing parenthesis');
+          }
+
+          index = closingParenthesisIndex + ')'.length;
+
+          state = 'column-constraints';
+          break;
+        }
+
         throw new Error(makeErrorMessage('FOREIGN KEY', sql, index, newlines));
       }
       case 'columns-closing-parenthesis': {
@@ -456,11 +483,3 @@ function parseCreateTableStatement(sql, checkName) {
 function makeErrorMessage(expected, sql, index, newlines) {
   return `Expected "${expected}" but got "${sql.substring(index, index + expected.length)}" at position ${index} (line ${newlines.length + 1}, character ${newlines.length > 0 ? (index - newlines[newlines.length - 1]) : index})`;
 }
-
-console.log(parseCreateTableStatement(`CREATE TABLE gpkg_tile_matrix (
-  table_name TEXT NOT NULL, zoom_level INTEGER NOT NULL,
-  matrix_width INTEGER NOT NULL, matrix_height INTEGER NOT NULL,
-  tile_width INTEGER NOT NULL, tile_height INTEGER NOT NULL,
-  pixel_x_size DOUBLE NOT NULL, pixel_y_size DOUBLE NOT NULL,
-  CONSTRAINT pk_ttm PRIMARY KEY (table_name, zoom_level),
-  CONSTRAINT fk_tmm_table_name FOREIGN KEY (table_name) REFERENCES gpkg_contents(table_name))`, 'gpkg_tile_matrix'));
