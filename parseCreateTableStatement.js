@@ -9,6 +9,7 @@ function parseCreateTableStatement(sql, checkName) {
   let columnNames = [];
   let columnTypes = [];
   let columnConstraintName = '';
+  let columnConstraintNameQuoted = false;
 
   let index = 0;
   let newlines = [];
@@ -133,6 +134,11 @@ function parseCreateTableStatement(sql, checkName) {
           break;
         }
 
+        if (sql.substring(index, index + 'FOREIGN KEY'.length) === 'FOREIGN KEY') {
+          state = 'column-constraint-kind';
+          break;
+        }
+
         if (sql[index] === '[') {
           if (columnName) {
             throw new Error(makeErrorMessage('quoted column name or ]', sql, index, newlines));
@@ -224,7 +230,61 @@ function parseCreateTableStatement(sql, checkName) {
           break;
         }
 
-        throw new Error(makeErrorMessage('TEXT, DATETIME, DOUBLE, INTEGER, TINYINT, BLOB', sql, index, newlines));
+        if (sql.substring(index, index + 'NVARCHAR'.length) === 'NVARCHAR') {
+          index += 'NVARCHAR'.length;
+          columnTypes.push('NVARCHAR');
+
+          if (sql[index] !== '(') {
+            throw new Error('NVARCHAR is missing size!');
+          }
+
+          index += '('.length;
+
+          while (sql[index] !== ')') {
+            if (sql[index] < '0' || sql[index] > '9') {
+              throw new Error('NVARCHAR size is not a number');
+            }
+
+            index++;
+          }
+
+          if (sql[index] !== ')') {
+            throw new Error('NVARCHAR size was not closed before running out of SQL!');
+          }
+
+          index += ')'.length;
+          state = 'column-constraints';
+          break;
+        }
+
+        if (sql.substring(index, index + 'NUMERIC'.length) === 'NUMERIC') {
+          index += 'NUMERIC'.length;
+          columnTypes.push('NUMERIC');
+
+          if (sql[index] !== '(') {
+            throw new Error('NUMERIC is missing size!');
+          }
+
+          index += '('.length;
+
+          while (sql[index] !== ')') {
+            if ((sql[index] < '0' || sql[index] > '9') && sql[index] !== ',') {
+              throw new Error('NUMERIC size is not a number');
+            }
+
+            index++;
+          }
+
+          if (sql[index] !== ')') {
+            throw new Error('NUMERIC size was not closed before running out of SQL!');
+          }
+
+          index += ')'.length;
+          state = 'column-constraints';
+          break;
+        }
+
+        throw new Error(makeErrorMessage('TEXT, DATETIME, DOUBLE, INTEGER, TINYINT, BLOB, NVARCHAR, NUMERIC', sql, index, newlines));
       }
       case 'column-constraints': {
         // Ignore leading whitespace
@@ -262,6 +322,16 @@ function parseCreateTableStatement(sql, checkName) {
 
         if (sql.substring(index, index + 'ASC'.length) === 'ASC') {
           index += 'ASC'.length;
+          break;
+        }
+
+        if (sql.substring(index, index + 'ON DELETE NO ACTION'.length) === 'ON DELETE NO ACTION') {
+          index += 'ON DELETE NO ACTION'.length;
+          break;
+        }
+
+        if (sql.substring(index, index + 'ON UPDATE NO ACTION'.length) === 'ON UPDATE NO ACTION') {
+          index += 'ON UPDATE NO ACTION'.length;
           break;
         }
 
@@ -351,8 +421,35 @@ function parseCreateTableStatement(sql, checkName) {
           } else {
             index++;
             columnConstraintName = '';
+            columnConstraintNameQuoted = false;
             state = 'column-constraint-kind';
             break;
+          }
+        }
+
+        if (sql[index] === '[') {
+          if (columnConstraintNameQuoted) {
+            throw new Error(makeErrorMessage('quoted column constraint name or ]', sql, index, newlines));
+          } else {
+            columnConstraintNameQuoted = true;
+            index++;
+            break;
+          }
+        }
+
+        if (sql[index] === ']') {
+          if (columnConstraintNameQuoted) {
+            if (columnConstraintName === '') {
+              throw new Error(makeErrorMessage('quoted column constraint name', sql, index, newlines));
+            } else {
+              index++;
+              columnConstraintName = '';
+              columnConstraintNameQuoted = false;
+              state = 'column-constraint-kind';
+              break;
+            }
+          } else {
+            throw new Error(makeErrorMessage('unquoted column constraint name', sql, index, newlines));
           }
         }
 
@@ -488,5 +585,5 @@ function parseCreateTableStatement(sql, checkName) {
 }
 
 function makeErrorMessage(expected, sql, index, newlines) {
-  return `Expected "${expected}" but got "${sql.substring(index, index + expected.length)}" at position ${index} (line ${newlines.length + 1}, character ${newlines.length > 0 ? (index - newlines[newlines.length - 1]) : index})`;
+  return `Expected "${expected}" but got "${sql.substring(index, index + expected.length)}" at position ${index} (line ${newlines.length + 1}, character ${newlines.length > 0 ? (index - newlines[newlines.length - 1]) : index})\n\n${sql}`;
 }
