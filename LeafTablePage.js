@@ -117,11 +117,11 @@ class LeafTablePage {
             const fitLength = payloadRoom - 4 /* Overflow page pointer */;
             const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + fitLength);
             itemOffset += fitLength;
-            payload.push(`BLOB (${fitLength}/${length} bytes before overflow)`);
+            payload.push(slice);
           } else {
             const slice = payloadDataView.buffer.slice(payloadDataView.byteOffset + itemOffset, payloadDataView.byteOffset + itemOffset + length);
             itemOffset += length;
-            payload.push(`BLOB of ${length} bytes`);
+            payload.push(slice);
           }
         } else if (serialType >= 13 && serialType % 2 === 1) {
           const length = (serialType - 13) / 2;

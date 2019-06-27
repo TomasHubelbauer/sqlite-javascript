@@ -193,7 +193,24 @@ window.addEventListener('load', async () => {
           tr.append(td);
         } else {
           const td = document.createElement('td');
-          td.textContent = cell;
+          if (cell instanceof ArrayBuffer) {
+            const downloadA = document.createElement('a');
+            downloadA.download = `${selectedTable}-${row[0]}.bin`;
+            downloadA.href = URL.createObjectURL(new Blob([new Uint8Array(cell)]));
+            downloadA.textContent = `BLOB of ${cell.byteLength} bytes (maybe overflow)`;
+            td.append(downloadA);
+
+            if (row[0] === 1) {
+              const downloadUnpackaedA = document.createElement('a');
+              downloadUnpackaedA.download = `${selectedTable}-${row[0]}.unpacked.bin`;
+              downloadUnpackaedA.href = URL.createObjectURL(new Blob([LZString.decompressFromUint8Array(new Uint8Array(cell))]));
+              downloadUnpackaedA.textContent = `un-GZIPped`;
+              td.append(downloadUnpackaedA);
+            }
+          } else {
+            td.textContent = cell;
+          }
+
           tr.append(td);
         }
       }
