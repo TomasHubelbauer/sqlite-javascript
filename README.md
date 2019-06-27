@@ -9,6 +9,7 @@
 I am using [DB browser for SQLite](https://github.com/sqlitebrowser/sqlitebrowser)
 to compare databases as read by this library and by the program.
 
+- Fix the `PlaylistTrack` table not opening due to an invalid data view range
 - Fix varint where I had to cap it to 8 bytes to not spill over to other values
   but according to the docs it should take 9 bytes - there must be some gotcha
   because those 8 bytes were all 0xff so maybe if there is 8 0xff then we're
@@ -43,5 +44,5 @@ to compare databases as read by this library and by the program.
 - Introduce a new class `Record` which is fed a `DataView` and reads the serial
   types and the payload into an API
 - Replace `FileReader.readAsArrayBuffer` with `Blob.arrayBuffer` when supported
-- Load overflow page indices from the overflowing cells in 0xd, 0xa, 0x2 in `construct
+- Load overflow page indices from the overflowing cells in 0xd, 0xa, 0x2 in `constructGraph`
 - Load left child pointers in cells in 0x5, 0x2

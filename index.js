@@ -212,8 +212,6 @@ window.addEventListener('load', async () => {
     selectedTable = event.currentTarget.dataset.tableName;
     selectedPage = 0;
     refreshView();
-
-    location.href = '#' + event.currentTarget.dataset.rowId;
   }
 
   function handlePrevButtonClick() {
