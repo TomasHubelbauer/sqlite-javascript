@@ -4,6 +4,14 @@
 
 > A JavaScript SQLite database file reader
 
+## Running
+
+Windows:
+
+```batch
+"C:\Program Files (x86)\IIS Express\iisexpress.exe" /path:%cd% /port:8000
+```
+
 ## To-Do
 
 I am using [DB browser for SQLite](https://github.com/sqlitebrowser/sqlitebrowser)
