@@ -138,9 +138,9 @@ window.addEventListener('load', async () => {
     }
 
     if (rows.length === 0) {
-      pagerDiv.append(document.createTextNode(' The table is empty.'));
+      pagerDiv.append(' The table is empty.');
     } else {
-      pagerDiv.append(document.createTextNode(` Page #${selectedPage + 1} out of ${pages} pages (of ${pageSize} items each). ${rows.length} items total.`));
+      pagerDiv.append(` Page #${selectedPage + 1} out of ${pages} pages (of ${pageSize} items each). ${rows.length} items total.`);
     }
 
     itemsDiv.append(pagerDiv);
