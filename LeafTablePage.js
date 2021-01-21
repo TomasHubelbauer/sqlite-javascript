@@ -106,8 +106,10 @@ export default class LeafTablePage {
           payload.push(payloadDataView.getFloat64(itemOffset));
           itemOffset += 8;
         } else if (serialType === 8) {
+          // TODO: Parse column types and convert to number if numeric
           payload.push(false);
         } else if (serialType === 9) {
+          // TODO: Parse column types and convert to number if numeric
           payload.push(true);
         } else if (serialType === 10) {
           throw new Error('Cannot access internal payload value');

@@ -12,10 +12,16 @@ Windows:
 "C:\Program Files (x86)\IIS Express\iisexpress.exe" /path:%cd% /port:8000
 ```
 
-## To-Do
-
 I am using [DB browser for SQLite](https://github.com/sqlitebrowser/sqlitebrowser)
 to compare databases as read by this library and by the program.
+
+## To-Do
+
+### Convert boolean serial type values to numbers in case of numeric column type
+
+For some numeric columns, the cell values 1 (and presumably 0 as well) are
+stored as booleans in the rows. These cell values should be converted to numbers
+for display.
 
 ### Link to the GitHub repository from the demo site
 
