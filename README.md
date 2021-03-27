@@ -90,3 +90,7 @@ as per the Content-Length header) and range-request the rest if range supported
 ### Load overflow page indices from the overflowing cells in 0xd, 0xa, 0x2 in `constructGraph`
 
 ### Load left child pointers in cells in 0x5, 0x2
+
+### Use `getVarint` from my ESM Varint library
+
+https://github.com/TomasHubelbauer/esm-dataview-getvarint
